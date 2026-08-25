@@ -26,8 +26,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log to console for debugging (in production, send to monitoring service)
-    console.error("ErrorBoundary caught:", error, errorInfo);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("ErrorBoundary caught:", error, errorInfo);
+    } else {
+      console.error("[Neural Arcade] La interfaz activó su recuperación segura");
+    }
   }
 
   handleReset = () => {
@@ -40,7 +43,11 @@ export class ErrorBoundary extends Component<Props, State> {
       if (recovered) localStorage.setItem("neural-arcade-v2", recovered);
       else localStorage.removeItem("neural-arcade-v2");
     } catch {
-      localStorage.removeItem("neural-arcade-v2");
+      try {
+        localStorage.removeItem("neural-arcade-v2");
+      } catch {
+        // El navegador bloqueó por completo el almacenamiento; la recarga aún funciona.
+      }
     }
     // Reload to ensure clean state
     if (typeof window !== "undefined") window.location.reload();
@@ -64,7 +71,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Neural Arcade encontró un error inesperado. Tu progreso está seguro.
               Recarga para continuar.
             </p>
-            {this.state.error && (
+            {process.env.NODE_ENV !== "production" && this.state.error && (
               <details className="text-left text-xs text-slate-500 bg-slate-950/60 rounded-lg p-2">
                 <summary className="cursor-pointer">Detalles técnicos</summary>
                 <pre className="mt-2 whitespace-pre-wrap break-all">

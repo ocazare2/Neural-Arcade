@@ -4,12 +4,17 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mascot } from "./Mascot";
 import { PulseButton } from "./Polish";
+import { readBooleanFlag, writeBooleanFlag } from "../storage";
 
 const ONBOARDED_KEY = "neural-arcade-onboarded";
 
 export function hasBeenOnboarded(): boolean {
   if (typeof window === "undefined") return true;
-  return localStorage.getItem(ONBOARDED_KEY) === "1";
+  try {
+    return readBooleanFlag(window.localStorage, ONBOARDED_KEY, true);
+  } catch {
+    return true;
+  }
 }
 
 export function Onboarding({ onComplete }: { onComplete: () => void }) {
@@ -36,6 +41,14 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   const current = screens[screen];
 
+  const persistOnboarded = () => {
+    try {
+      writeBooleanFlag(window.localStorage, ONBOARDED_KEY);
+    } catch {
+      // Algunas políticas de privacidad bloquean incluso el acceso al objeto storage.
+    }
+  };
+
   useEffect(() => {
     setTyped("");
     let i = 0;
@@ -55,13 +68,13 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
     if (screen < screens.length - 1) {
       setScreen(screen + 1);
     } else {
-      try { localStorage.setItem(ONBOARDED_KEY, "1"); } catch { /* */ }
+      persistOnboarded();
       onComplete();
     }
   };
 
   const handleSkip = () => {
-    try { localStorage.setItem(ONBOARDED_KEY, "1"); } catch { /* */ }
+    persistOnboarded();
     onComplete();
   };
 
