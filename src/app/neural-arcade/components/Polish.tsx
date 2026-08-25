@@ -66,11 +66,12 @@ export function FloatingText({ text, x, y, color, trigger }: { text: string; x: 
 
 
 // PulseButton — buttons that pulse subtly, scale on tap
-export function PulseButton({ children, onClick, color = "#22d3ee", disabled, className }: { children: ReactNode; onClick: () => void; color?: string; disabled?: boolean; className?: string }) {
+export function PulseButton({ children, onClick, color = "#22d3ee", disabled, autoFocus, className }: { children: ReactNode; onClick: () => void; color?: string; disabled?: boolean; autoFocus?: boolean; className?: string }) {
   return (
     <motion.button
       onClick={onClick}
       disabled={disabled}
+      autoFocus={autoFocus}
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.95 }}
       animate={{ scale: [1, 1.02, 1] }}

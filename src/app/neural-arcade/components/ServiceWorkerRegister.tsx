@@ -9,7 +9,9 @@ export function ServiceWorkerRegister() {
     if (process.env.NODE_ENV !== "production") return;
 
     const register = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js").catch((error) => {
+        console.warn("[Neural Arcade] No se pudo registrar el modo offline", error);
+      });
     };
 
     if (document.readyState === "complete") register();

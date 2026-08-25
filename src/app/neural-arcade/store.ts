@@ -3,55 +3,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Phase, ProgressMap } from "./types";
+import { ALL_LEVELS } from "./curriculum";
+import {
+  applyPhaseCompletion,
+  sanitizePhase,
+  sanitizeProgress,
+  sanitizeXp,
+} from "./progress";
 
-// ── Defensive validation layer ─────────────────────────────
-// Sanitizes state loaded from localStorage. Prevents corruption
-// from malformed JSON, impossible values, or malicious injection.
-const VALID_PHASES: Phase[] = ["theory", "demo", "practice", "challenge", "mastery"];
-
-function sanitizeStars(n: unknown): number {
-  if (typeof n !== "number" || !isFinite(n) || n < 0) return 0;
-  return Math.min(3, Math.max(0, Math.round(n)));
-}
-
-function sanitizeXp(n: unknown): number {
-  if (typeof n !== "number" || !isFinite(n) || n < 0) return 0;
-  return Math.min(1e9, Math.floor(n)); // cap at 1B to prevent overflow
-}
-
-function sanitizeAttempts(n: unknown): number {
-  if (typeof n !== "number" || !isFinite(n) || n < 0) return 0;
-  return Math.min(1e6, Math.floor(n));
-}
-
-function sanitizePhase(p: unknown): Phase {
-  if (typeof p === "string" && VALID_PHASES.includes(p as Phase)) return p as Phase;
-  return "theory";
-}
-
-function sanitizeProgress(raw: unknown): ProgressMap {
-  if (typeof raw !== "object" || raw === null) return {};
-  const out: ProgressMap = {};
-  const obj = raw as Record<string, unknown>;
-  for (const key of Object.keys(obj)) {
-    // Reject prototype-pollution attempts
-    if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
-    const val = obj[key];
-    if (typeof val !== "object" || val === null) continue;
-    const v = val as Record<string, unknown>;
-    out[key] = {
-      stars: sanitizeStars(v.stars),
-      phasesDone: Array.isArray(v.phasesDone)
-        ? (v.phasesDone as unknown[]).filter((p): p is Phase =>
-            typeof p === "string" && VALID_PHASES.includes(p as Phase)
-          )
-        : [],
-      attempts: sanitizeAttempts(v.attempts),
-      completedAt: typeof v.completedAt === "string" ? v.completedAt : undefined,
-    };
-  }
-  return out;
-}
+const PUBLISHED_LEVEL_IDS = new Set(ALL_LEVELS.map((level) => level.id));
 
 interface ArcadeState {
   progress: ProgressMap;
@@ -79,37 +39,13 @@ export const useArcade = create<ArcadeState>()(
       setPhase: (p) => set({ activePhase: sanitizePhase(p) }),
 
       completePhase: (levelId, phase, stars) => {
-        const cur = get().progress[levelId] ?? {
-          stars: 0,
-          phasesDone: [] as Phase[],
-          attempts: 0,
-        };
-        const phasesDone = cur.phasesDone.includes(phase)
-          ? cur.phasesDone
-          : [...cur.phasesDone, phase];
-        const newStars = stars != null ? Math.max(cur.stars, sanitizeStars(stars)) : cur.stars;
-        const isFirstComplete =
-          phase === "challenge" && !cur.phasesDone.includes("challenge");
-        const xpGain = stars != null ? 50 + sanitizeStars(stars) * 20 : 25;
-
-        set({
-          progress: {
-            ...get().progress,
-            [levelId]: {
-              stars: newStars,
-              phasesDone,
-              attempts:
-                phase === "challenge" && isFirstComplete
-                  ? cur.attempts + 1
-                  : cur.attempts,
-              completedAt:
-                isFirstComplete && !cur.completedAt
-                  ? new Date().toISOString()
-                  : cur.completedAt,
-            },
-          },
-          xp: sanitizeXp(get().xp + (isFirstComplete ? xpGain : stars ? xpGain : 0)),
-        });
+        if (!PUBLISHED_LEVEL_IDS.has(levelId)) return;
+        set(applyPhaseCompletion(
+          { progress: get().progress, xp: get().xp },
+          levelId,
+          phase,
+          stars,
+        ));
       },
 
       reset: () => set({ progress: {}, xp: 0, activeLevel: null, activePhase: "theory" }),
@@ -122,7 +58,7 @@ export const useArcade = create<ArcadeState>()(
         const p = persisted as Record<string, unknown>;
         return {
           ...current,
-          progress: sanitizeProgress(p.progress),
+          progress: sanitizeProgress(p.progress, PUBLISHED_LEVEL_IDS),
           xp: sanitizeXp(p.xp),
           activeLevel: typeof p.activeLevel === "string" ? p.activeLevel : null,
           activePhase: sanitizePhase(p.activePhase),

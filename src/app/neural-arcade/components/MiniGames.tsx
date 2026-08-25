@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Play, RotateCcw, Clock } from "lucide-react";
+import { Play, RotateCcw, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { playSound } from "../lib/sound";
+import { CONCEPT_GAME_MODULES, type ConceptGameId } from "../concept-game-data";
+import {
+  GRADIENT_SURFACES,
+  createGradientRound,
+  takeGradientStep,
+  type GradientPoint,
+} from "../gradient-game";
 import { FloatingText, ScreenShake, ComboSystem } from "./Polish";
 
 // ═══════════════════════════════════════════════════════════
@@ -275,82 +282,89 @@ export function AttentionConnectGame({ color }: { color: string }) {
 // ═══════════════════════════════════════════════════════════
 // 3. GRADIENT ROLLER — tune LR to reach valley
 // ═══════════════════════════════════════════════════════════
-interface GradientSurface {
-  name: string;
-  f: (x: number, y: number) => number;
-  gx: (x: number, y: number) => number;
-  gy: (x: number, y: number) => number;
-  start: [number, number];
-  target: [number, number];
-  goodLr: number;
-}
-
-const SURFACES: GradientSurface[] = [
-  { name: "Cuenco", f: (x: number, y: number) => (x - 5) ** 2 + (y - 5) ** 2, gx: (x: number) => 2 * (x - 5), gy: (x: number, y: number) => 2 * (y - 5), start: [1, 1], target: [5, 5], goodLr: 0.1 },
-  { name: "Ravine", f: (x: number, y: number) => 10 * (y - x ** 2) ** 2 + (1 - x) ** 2, gx: (x: number, y: number) => -40 * x * (y - x ** 2) - 2 * (1 - x), gy: (x: number, y: number) => 20 * (y - x ** 2), start: [-1, 1], target: [1, 1], goodLr: 0.05 },
-  { name: "Silla", f: (x: number, y: number) => x ** 2 - y ** 2, gx: () => 0, gy: () => 0, start: [0, 0.1], target: [0, 0], goodLr: 0.1 }, // simplified
-];
-
 export function GradientRollerGame({ color }: { color: string }) {
   const [phase, setPhase] = useState<"start" | "play" | "end">("start");
   const [round, setRound] = useState(0);
-  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 1, y: 1 });
+  const [pos, setPos] = useState<GradientPoint>({ ...GRADIENT_SURFACES[0].start });
   const [lr, setLr] = useState(0.1);
   const [steps, setSteps] = useState(0);
   const [score, setScore] = useState(0);
   const [exploded, setExploded] = useState(false);
-  const [trail, setTrail] = useState<{ x: number; y: number }[]>([]);
+  const [transitioning, setTransitioning] = useState(false);
+  const [trail, setTrail] = useState<GradientPoint[]>([]);
+  const transitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const reset = () => { setPhase("start"); setRound(0); setPos({ x: 1, y: 1 }); setLr(0.1); setSteps(0); setScore(0); setExploded(false); setTrail([]); };
+  useEffect(() => () => {
+    if (transitionTimer.current) clearTimeout(transitionTimer.current);
+  }, []);
 
-  const startRound = () => {
-    const s = SURFACES[round];
-    setPos({ x: s.start[0], y: s.start[1] });
-    setTrail([{ x: s.start[0], y: s.start[1] }]);
-    setSteps(0);
-    setExploded(false);
+  const beginRound = (nextRound: number) => {
+    const next = createGradientRound(nextRound);
+    setRound(nextRound);
+    setPos(next.position);
+    setTrail([next.position]);
+    setSteps(next.steps);
+    setExploded(next.exploded);
+    setTransitioning(false);
     setPhase("play");
   };
 
+  const reset = () => {
+    if (transitionTimer.current) clearTimeout(transitionTimer.current);
+    transitionTimer.current = null;
+    setPhase("start");
+    setRound(0);
+    setPos({ ...GRADIENT_SURFACES[0].start });
+    setLr(0.1);
+    setSteps(0);
+    setScore(0);
+    setExploded(false);
+    setTransitioning(false);
+    setTrail([]);
+  };
+
+  const scheduleNextRound = (delay: number) => {
+    setTransitioning(true);
+    transitionTimer.current = setTimeout(() => {
+      const nextRound = round + 1;
+      if (nextRound < GRADIENT_SURFACES.length) beginRound(nextRound);
+      else setPhase("end");
+      transitionTimer.current = null;
+    }, delay);
+  };
+
   const step = () => {
-    if (exploded) return;
-    const s = SURFACES[round];
-    const gx = s.gx(pos.x, pos.y);
-    const gy = s.gy(pos.x, pos.y);
-    const nx = pos.x - lr * gx;
-    const ny = pos.y - lr * gy;
-    if (Math.abs(nx) > 15 || Math.abs(ny) > 15 || !isFinite(nx) || !isFinite(ny)) {
+    if (exploded || transitioning) return;
+    const result = takeGradientStep(round, pos, lr, steps);
+    setSteps(result.steps);
+    if (result.exploded) {
       setExploded(true);
       playSound("wrong");
-      setTimeout(() => { if (round < SURFACES.length - 1) { setRound(r => r + 1); startRound(); } else setPhase("end"); }, 1500);
+      scheduleNextRound(1200);
       return;
     }
-    const newPos = { x: nx, y: ny };
-    setPos(newPos);
-    setTrail(t => [...t, newPos].slice(-20));
-    setSteps(s2 => s2 + 1);
+    setPos(result.position);
+    setTrail(current => [...current, result.position].slice(-20));
     playSound("tick");
-    const dist = Math.hypot(nx - s.target[0], ny - s.target[1]);
-    if (dist < 0.5) {
-      const pts = Math.max(0, 100 - steps * 5);
-      setScore(sc => sc + pts);
+    if (result.solved) {
+      setScore(current => current + result.points);
       playSound("levelUp");
-      setTimeout(() => { if (round < SURFACES.length - 1) { setRound(r => r + 1); startRound(); } else setPhase("end"); }, 1000);
+      scheduleNextRound(800);
     }
   };
 
-  if (phase === "start") return <StartScreen title="GRADIENT ROLLER" desc="Ajusta el learning rate. Lleva la bola al valle. 3 rondas." onStart={startRound} color={color} />;
+  if (phase === "start") return <StartScreen title="GRADIENT ROLLER" desc="Ajusta el learning rate. Lleva la bola al valle. 3 rondas." onStart={() => beginRound(0)} color={color} />;
   if (phase === "end") return <EndScreen score={score} max={300} onRestart={reset} color={color} msg="LR alto explota. LR bajo eterno. Encontrar el óptimo es el arte." />;
 
-  const s = SURFACES[round];
+  const s = GRADIENT_SURFACES[round];
   const toSvg = (x: number, y: number) => ({ sx: 50 + x * 5, sy: 50 - y * 5 });
   const ball = toSvg(pos.x, pos.y);
-  const target = toSvg(s.target[0], s.target[1]);
+  const target = toSvg(s.target.x, s.target.y);
 
   return (
     <GameFrame title={`Gradient Roller · ${s.name}`} instruction="LR alto = explota. LR bajo = lento. Ajusta y da pasos." color={color} onRestart={reset}>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-slate-400">Ronda {round + 1}/{SURFACES.length}</span>
+        <span className="text-xs text-slate-400">Ronda {round + 1}/{GRADIENT_SURFACES.length}</span>
         <span className="text-xs text-slate-400">{steps} pasos</span>
         <span className="text-xs font-bold" style={{ color }}>{score} pts</span>
       </div>
@@ -365,74 +379,137 @@ export function GradientRollerGame({ color }: { color: string }) {
         </svg>
       </div>
       <div className="mt-3">
-        <label className="text-xs text-slate-400">Learning rate: {lr.toFixed(2)} {lr > 0.5 ? "⚠️" : lr < 0.05 ? "🐢" : "✓"}</label>
-        <input type="range" min="0.01" max="0.8" step="0.01" value={lr} onChange={e => setLr(+e.target.value)} className="w-full accent-cyan-500" />
+        <label htmlFor="gradient-learning-rate" className="text-xs text-slate-400">
+          Learning rate: {lr.toFixed(2)} {lr > s.goodLr * 3 ? "⚠️" : lr < s.goodLr / 2 ? "🐢" : "✓"}
+        </label>
+        <input id="gradient-learning-rate" type="range" min="0.01" max="0.8" step="0.01" value={lr} onChange={e => setLr(+e.target.value)} className="w-full accent-cyan-500" />
       </div>
-      <button onClick={step} disabled={exploded} className="w-full mt-2 rounded-xl py-3 font-bold text-sm text-[#0a0414] disabled:opacity-50" style={{ background: color }}>
-        {exploded ? "💥 EXPLOTÓ" : "DAR PASO ⬇️"}
+      <button onClick={step} disabled={exploded || transitioning} className="w-full mt-2 rounded-xl py-3 font-bold text-sm text-[#0a0414] disabled:opacity-50" style={{ background: color }}>
+        {exploded ? "💥 EXPLOTÓ" : transitioning ? "✓ RONDA COMPLETADA" : "DAR PASO ⬇️"}
       </button>
     </GameFrame>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
-// 4-13. PLACEHOLDER GAMES for remaining levels (use existing demos)
-// These delegate to the passive demos but wrapped in a game frame
+// 4-13. CONCEPT CHALLENGES — complete three-round games
 // ═══════════════════════════════════════════════════════════
 export function EmbeddingSpaceGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Constelación de Palabras" desc="Agrupa palabras por categoría." />;
+  return <ConceptChallengeGame color={color} gameId="embed" />;
 }
 export function NeuronBuilderGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Cablea la Neurona" desc="Ajusta pesos para resolver logic gates." />;
+  return <ConceptChallengeGame color={color} gameId="neuron" />;
 }
 export function BackpropTracerGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Traza el Gradiente" desc="Click nodos en orden reverso del backprop." />;
+  return <ConceptChallengeGame color={color} gameId="backprop" />;
 }
 export function TransformerStackGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Arma el Transformer" desc="Ordena los bloques del pipeline." />;
+  return <ConceptChallengeGame color={color} gameId="trans" />;
 }
 export function TokenGeneratorGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Predice el Token" desc="Elige el siguiente token más probable." />;
+  return <ConceptChallengeGame color={color} gameId="gen" />;
 }
 export function AlignmentSorterGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Ordena el Alignment" desc="Ordena las etapas del pipeline de alignment." />;
+  return <ConceptChallengeGame color={color} gameId="align" />;
 }
 export function RagHunterGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Caza Documentos" desc="Recupera los documentos más relevantes." />;
+  return <ConceptChallengeGame color={color} gameId="rag" />;
 }
 export function AgentLoopGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Guía al Agente" desc="Elige la acción correcta en cada paso." />;
+  return <ConceptChallengeGame color={color} gameId="agent" />;
 }
 export function OrchestratorGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Director de Orquesta" desc="Asigna agentes al pipeline." />;
+  return <ConceptChallengeGame color={color} gameId="orch" />;
 }
 export function MathPlaygroundGame({ color }: { color: string }) {
-  return <SimpleGame color={color} title="Playground de Vectores" desc="Mueve los sliders y ve el producto punto." />;
+  return <ConceptChallengeGame color={color} gameId="math" />;
 }
 
-function SimpleGame({ color, title, desc }: { color: string; title: string; desc: string }) {
+function ConceptChallengeGame({ color, gameId }: { color: string; gameId: ConceptGameId }) {
+  const game = CONCEPT_GAME_MODULES[gameId];
   const [phase, setPhase] = useState<"start" | "play" | "end">("start");
+  const [round, setRound] = useState(0);
+  const [picked, setPicked] = useState<number | null>(null);
   const [score, setScore] = useState(0);
+
+  const reset = () => {
+    setPhase("start");
+    setRound(0);
+    setPicked(null);
+    setScore(0);
+  };
+
+  const choose = (index: number) => {
+    if (picked !== null) return;
+    setPicked(index);
+    if (index === game.rounds[round].correct) {
+      setScore(current => current + 100);
+      playSound("success");
+    } else {
+      playSound("wrong");
+    }
+  };
+
+  const next = () => {
+    if (round < game.rounds.length - 1) {
+      setRound(current => current + 1);
+      setPicked(null);
+    } else {
+      setPhase("end");
+    }
+  };
+
+  if (phase === "start") {
+    return <StartScreen title={game.title} desc={game.instruction} onStart={() => setPhase("play")} color={color} />;
+  }
+  if (phase === "end") {
+    return <EndScreen score={score} max={game.rounds.length * 100} onRestart={reset} color={color} msg="Cada decisión conecta el concepto con una situación real." />;
+  }
+
+  const challenge = game.rounds[round];
   return (
-    <div className="space-y-3">
-      {phase === "start" && <StartScreen title={title} desc={desc} onStart={() => setPhase("play")} color={color} />}
-      {phase === "play" && (
-        <>
-          <GameFrame title={title} instruction={desc} color={color} onRestart={() => { setPhase("start"); setScore(0); }}>
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 text-center">
-              <p className="text-sm text-slate-300 mb-2">Mini-juego en desarrollo para este nivel.</p>
-              <p className="text-xs text-slate-500">Mientras tanto, explora la teoría y el reto.</p>
-              <div className="mt-4 flex gap-2 justify-center">
-                <button onClick={() => { setScore(s => s + 10); playSound("success"); }} className="rounded-lg px-3 py-1.5 text-xs font-bold text-[#0a0414]" style={{ background: color }}>+10 pts</button>
-                <button onClick={() => { playSound("wrong"); }} className="rounded-lg px-3 py-1.5 text-xs font-bold border border-rose-500 text-rose-400">Error</button>
-              </div>
-              <p className="mt-3 text-xs font-bold" style={{ color }}>{score} pts</p>
-            </div>
-          </GameFrame>
-          <button onClick={() => setPhase("end")} className="w-full rounded-xl py-2.5 text-sm font-bold text-[#0a0414]" style={{ background: color }}>TERMINAR</button>
-        </>
+    <GameFrame title={game.title} instruction={game.instruction} color={color} onRestart={reset}>
+      <div className="flex items-center justify-between text-xs text-slate-400">
+        <span>Ronda {round + 1}/{game.rounds.length}</span>
+        <span className="font-bold" style={{ color }}>{score} pts</span>
+      </div>
+      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-4">
+        <p className="text-sm font-semibold text-slate-100 mb-3">{challenge.prompt}</p>
+        <div className="grid gap-2">
+          {challenge.options.map((option, index) => {
+            const correct = index === challenge.correct;
+            const selected = picked === index;
+            return (
+              <button
+                key={option}
+                onClick={() => choose(index)}
+                disabled={picked !== null}
+                className={cn(
+                  "w-full rounded-lg border px-3 py-2.5 text-left text-sm transition flex items-center justify-between gap-2",
+                  picked !== null && correct && "border-emerald-500 bg-emerald-500/10 text-emerald-100",
+                  selected && !correct && "border-rose-500 bg-rose-500/10 text-rose-100",
+                  picked === null && "border-slate-700 bg-slate-900/60 text-slate-200 hover:border-slate-500",
+                  picked !== null && !correct && !selected && "border-slate-800 text-slate-500",
+                )}
+              >
+                <span>{option}</span>
+                {picked !== null && correct && <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
+                {selected && !correct && <XCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+        {picked !== null && (
+          <p className="mt-3 text-xs leading-relaxed text-slate-300" role="status">
+            {challenge.explain}
+          </p>
+        )}
+      </div>
+      {picked !== null && (
+        <button onClick={next} className="w-full rounded-xl py-3 text-sm font-bold text-[#0a0414]" style={{ background: color }}>
+          {round < game.rounds.length - 1 ? "SIGUIENTE RETO" : "VER RESULTADO"}
+        </button>
       )}
-      {phase === "end" && <EndScreen score={score} onRestart={() => { setPhase("start"); setScore(0); }} color={color} />}
-    </div>
+    </GameFrame>
   );
 }

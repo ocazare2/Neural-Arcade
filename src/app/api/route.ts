@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { rateLimit } from "@/lib/rate-limit-hybrid";
+import { APP_VERSION } from "@/lib/version";
 
 // Node.js is the supported runtime for the server-side rate limiter.
 export const runtime = "nodejs";
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       message: "Neural Arcade API",
-      version: "4.0",
+      version: APP_VERSION,
       status: "ok",
     },
     { headers },

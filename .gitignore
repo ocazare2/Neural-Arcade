@@ -28,10 +28,22 @@ yarn-error.log*
 .idea/
 .vscode/
 .claude/
+.agents/
+.codex/
+.cursor/
+.zscripts/
 .z-ai-config
+AGENTS.md
+CLAUDE.md
 
 # Local audit artifacts
 /download/
 /tool-results/
 /upload/
+/*AUDIT*.md
+/ATTACK_REPORT.md
+/worklog.md
 *.bak
+*.bundle
+*.tar
+*.tar.gz

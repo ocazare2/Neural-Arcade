@@ -4,6 +4,7 @@ import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from "re
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronDown, BookOpen, Sparkles, Trophy, Info, Lightbulb } from "lucide-react";
 import { ALL_GLOSSARY_TERMS, lookupGlossary } from "../glossary";
+import { normalizeMathCommands } from "../math-format";
 import { cn } from "@/lib/utils";
 
 // ───────────────────────────────────────────────────────────
@@ -46,15 +47,15 @@ export function Formula({ children, explain }: { children: string; explain?: str
 
 // Parser simple para matemática inline: soporta ^ superscript, _ subscript, \frac{}{}
 function MathText({ children }: { children: string }) {
-  const tokens = parseMath(children);
+  const tokens = parseMath(normalizeMathCommands(children));
   return <span>{tokens.map((t, i) => <span key={i}>{t}</span>)}</span>;
 }
 
-function parseMath(input: string): ReactNode[] {
+function parseMath(input: string, depth = 0): ReactNode[] {
   // Defensive: limit input length and nesting depth to prevent abuse
   if (input.length > 2000) return [input.slice(0, 2000) + "..."];
-  let depth = 0;
   const MAX_DEPTH = 20;
+  if (depth > MAX_DEPTH) return [input];
 
   const out: ReactNode[] = [];
   let i = 0;
@@ -68,8 +69,6 @@ function parseMath(input: string): ReactNode[] {
     if (input.slice(i, i + 5) === "\\frac") {
       flush();
       i += 5;
-      // Depth limit: prevent stack overflow from deeply nested \frac{\frac{...}}
-      if (++depth > MAX_DEPTH) { buf += input.slice(i); break; }
       const num = readBrace(input, i);
       if (num.endIndex === i) { buf += input.slice(i); break; } // unbalanced, abort
       i = num.endIndex;
@@ -78,8 +77,8 @@ function parseMath(input: string): ReactNode[] {
       i = den.endIndex;
       out.push(
         <span key={`frac-${i}`} className="inline-flex flex-col items-center align-middle mx-1 text-[0.85em]">
-          <span className="border-b border-cyan-300/60 px-1.5 pb-0.5">{parseMath(num.content)}</span>
-          <span className="px-1.5 pt-0.5">{parseMath(den.content)}</span>
+          <span className="border-b border-cyan-300/60 px-1.5 pb-0.5">{parseMath(num.content, depth + 1)}</span>
+          <span className="px-1.5 pt-0.5">{parseMath(den.content, depth + 1)}</span>
         </span>
       );
       continue;
@@ -110,11 +109,15 @@ function parseMath(input: string): ReactNode[] {
       flush();
       i += 5;
       const arg = readBrace(input, i);
+      if (arg.endIndex === i) {
+        out.push(<span key={`sqrt-${i}`}>√</span>);
+        continue;
+      }
       i = arg.endIndex;
       out.push(
         <span key={`sqrt-${i}`} className="inline-flex items-center">
           <span className="text-lg">√</span>
-          <span className="border-t border-cyan-300/60 px-0.5">{parseMath(arg.content)}</span>
+          <span className="border-t border-cyan-300/60 px-0.5">{parseMath(arg.content, depth + 1)}</span>
         </span>
       );
       continue;

@@ -16,6 +16,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import type { Phase, LevelMeta } from "./types";
 import { ALL_LEVELS } from "./curriculum";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/version";
 
 // ─────────────────────────────────────────────────────────────
 // Code-splitting: each mini-game is loaded lazily ONLY when the
@@ -146,9 +147,9 @@ function HomeView() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const totalStars = Object.values(progress).reduce((s, p) => s + p.stars, 0);
-  const completedCount = Object.keys(progress).filter(id => progress[id]?.phasesDone?.includes("challenge")).length;
-  const allDone = completedCount === ALL_LEVELS.length;
+  const totalStars = ALL_LEVELS.reduce((sum, level) => sum + (progress[level.id]?.stars ?? 0), 0);
+  const completedCount = ALL_LEVELS.filter(level => progress[level.id]?.phasesDone?.includes("challenge")).length;
+  const allDone = ALL_LEVELS.every(level => progress[level.id]?.phasesDone?.includes("challenge"));
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount hydration for SSR-safe localStorage check
@@ -167,6 +168,26 @@ function HomeView() {
   const playLabel = firstPlayableIdx <= 0 ? "EMPEZAR A JUGAR" : "CONTINUAR";
 
   const isUnlocked = (i: number) => i === 0 || progress[ALL_LEVELS[i - 1].id]?.phasesDone?.includes("challenge");
+
+  const handleResetDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setShowResetConfirm(false);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not([disabled])")];
+    if (controls.length === 0) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
@@ -192,7 +213,7 @@ function HomeView() {
       )}
 
       {/* Decorative particles */}
-      <div className="fixed inset-0 pointer-events-none opacity-30">
+      <div className="fixed inset-0 pointer-events-none opacity-30" aria-hidden="true">
         {Array.from({ length: 30 }).map((_, i) => (
           <motion.div
             key={i}
@@ -338,12 +359,15 @@ function HomeView() {
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t border-slate-800 text-center space-y-4">
           <p className="text-xs text-slate-500">
-            Neural Arcade v5.3 · {ALL_LEVELS.length} niveles · {ALL_LEVELS.reduce((s, l) => s + l.theory.length, 0)} bloques de teoría · 26 demos · glosario interactivo
+            Neural Arcade v{APP_VERSION} · {ALL_LEVELS.length} niveles · {ALL_LEVELS.reduce((s, l) => s + l.theory.length, 0)} bloques de teoría · 26 demos · glosario interactivo
           </p>
 
           {/* Made with */}
           <p className="text-[10px] text-slate-600 flex items-center justify-center gap-1">
             Hecho con <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" /> para aprender IA jugando
+          </p>
+          <p className="text-[10px] text-slate-500">
+            Proyecto creado 100% con inteligencia artificial.
           </p>
 
           <button
@@ -371,10 +395,15 @@ function HomeView() {
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
               onClick={e => e.stopPropagation()}
+              onKeyDown={handleResetDialogKeyDown}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reset-progress-title"
+              aria-describedby="reset-progress-description"
               className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full"
             >
-              <p className="text-sm font-bold text-slate-100 mb-2">¿Reiniciar todo el progreso?</p>
-              <p className="text-xs text-slate-400 mb-4">Perderás todas tus estrellas, XP y fases completadas. No se puede deshacer.</p>
+              <p id="reset-progress-title" className="text-sm font-bold text-slate-100 mb-2">¿Reiniciar todo el progreso?</p>
+              <p id="reset-progress-description" className="text-xs text-slate-400 mb-4">Perderás todas tus estrellas, XP y fases completadas. No se puede deshacer.</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => { reset(); setShowResetConfirm(false); }}
@@ -383,6 +412,7 @@ function HomeView() {
                   Sí, reiniciar
                 </button>
                 <button
+                  autoFocus
                   onClick={() => setShowResetConfirm(false)}
                   className="flex-1 rounded-lg border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800"
                 >

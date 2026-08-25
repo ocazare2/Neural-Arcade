@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Sparkles, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,11 @@ export function QuizRunner({
   const [mistakes, setMistakes] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [done, setDone] = useState(false);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+  }, []);
 
   // Defensive: if a level has no questions, render an empty-state instead of crashing.
   if (questions.length === 0) {
@@ -67,7 +72,7 @@ export function QuizRunner({
     } else {
       setMistakes(m => m + 1);
     }
-    setTimeout(() => {
+    advanceTimer.current = setTimeout(() => {
       if (idx < questions.length - 1) {
         setIdx(idx + 1);
         setPicked(null);
@@ -77,6 +82,7 @@ export function QuizRunner({
         // onComplete is optional (practice mode doesn't supply it).
         onComplete?.(stars, newCorrect, questions.length);
       }
+      advanceTimer.current = null;
     }, 1800);
   };
 

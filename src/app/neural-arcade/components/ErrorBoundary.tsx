@@ -3,6 +3,7 @@
 import { Component, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, RotateCcw } from "lucide-react";
+import { recoverPersistedArcadeState } from "../recovery";
 
 interface Props {
   children: ReactNode;
@@ -31,12 +32,13 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleReset = () => {
     this.setState({ hasError: false, error: undefined });
-    // Clear potentially corrupted state
+    // Preserve progress while returning to a known-safe screen. If the stored
+    // value itself is malformed, remove it so hydration can start cleanly.
     try {
       const stored = localStorage.getItem("neural-arcade-v2");
-      if (stored) {
-        JSON.parse(stored); // validate
-      }
+      const recovered = recoverPersistedArcadeState(stored);
+      if (recovered) localStorage.setItem("neural-arcade-v2", recovered);
+      else localStorage.removeItem("neural-arcade-v2");
     } catch {
       localStorage.removeItem("neural-arcade-v2");
     }

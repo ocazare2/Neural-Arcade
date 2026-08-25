@@ -108,9 +108,9 @@ describe("recuperación", () => {
 describe("minijuegos conceptuales", () => {
   test("los diez niveles antes incompletos tienen tres retos válidos", () => {
     expect(Object.keys(CONCEPT_GAME_MODULES).sort()).toEqual([...REQUIRED_CONCEPT_GAME_IDS].sort());
-    for (const module of Object.values(CONCEPT_GAME_MODULES)) {
-      expect(module.rounds.length).toBeGreaterThanOrEqual(3);
-      for (const round of module.rounds) {
+    for (const game of Object.values(CONCEPT_GAME_MODULES)) {
+      expect(game.rounds.length).toBeGreaterThanOrEqual(3);
+      for (const round of game.rounds) {
         expect(round.options.length).toBeGreaterThanOrEqual(3);
         expect(round.correct).toBeGreaterThanOrEqual(0);
         expect(round.correct).toBeLessThan(round.options.length);

@@ -27,7 +27,16 @@ export function LevelShell({
   children: ReactNode;
 }) {
   const closeLevel = useArcade(s => s.closeLevel);
+  const completedPhases = useArcade(s => s.progress[level.id]?.phasesDone ?? []);
   const phaseIdx = PHASES.findIndex(p => p.key === currentPhase);
+  const highestCompletedIdx = PHASES.reduce(
+    (highest, phase, index) => completedPhases.includes(phase.key) ? Math.max(highest, index) : highest,
+    -1,
+  );
+  const highestAccessibleIdx = Math.max(
+    phaseIdx,
+    Math.min(PHASES.length - 1, highestCompletedIdx + 1),
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -60,18 +69,19 @@ export function LevelShell({
         <div className="max-w-3xl mx-auto px-3 pb-2.5">
           <div className="flex items-center gap-1 overflow-x-auto">
             {PHASES.map((p, i) => {
-              const done = i < phaseIdx;
+              const done = completedPhases.includes(p.key);
               const active = i === phaseIdx;
+              const accessible = i <= highestAccessibleIdx;
               return (
                 <button
                   key={p.key}
-                  onClick={() => i <= phaseIdx && onPhaseChange(p.key)}
-                  disabled={i > phaseIdx}
+                  onClick={() => accessible && onPhaseChange(p.key)}
+                  disabled={!accessible}
                   className={cn(
                     "flex items-center gap-1.5 px-2 py-1 rounded-md transition flex-shrink-0",
                     active && "bg-slate-800",
                     done && "hover:bg-slate-800 cursor-pointer",
-                    i > phaseIdx && "opacity-40 cursor-not-allowed"
+                    !accessible && "opacity-40 cursor-not-allowed"
                   )}
                 >
                   <div

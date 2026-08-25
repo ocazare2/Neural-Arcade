@@ -65,11 +65,37 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
     onComplete();
   };
 
+  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      handleSkip();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = [...event.currentTarget.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )];
+    if (controls.length === 0) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-message"
+      onKeyDown={handleDialogKeyDown}
       className="fixed inset-0 z-[60] flex flex-col items-center justify-center px-6"
       style={{ background: "radial-gradient(ellipse at center, #1e0a3c 0%, #0d0518 70%)" }}
     >
@@ -102,13 +128,13 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
           <Mascot mood={current.mascotMood} size={140} trackCursor={false} />
 
           <div className="min-h-[60px] flex items-center">
-            <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
+            <p id="onboarding-message" className="text-base sm:text-lg text-slate-100 leading-relaxed">
               {typed}
               <span className="animate-pulse">▊</span>
             </p>
           </div>
 
-          <PulseButton onClick={handleNext} color="#22d3ee" className="px-8 py-3 text-base">
+          <PulseButton autoFocus onClick={handleNext} color="#22d3ee" className="px-8 py-3 text-base">
             {current.btn}
           </PulseButton>
         </motion.div>
