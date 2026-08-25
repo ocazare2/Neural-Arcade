@@ -1,0 +1,118 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mascot } from "./Mascot";
+import { PulseButton } from "./Polish";
+
+const ONBOARDED_KEY = "neural-arcade-onboarded";
+
+export function hasBeenOnboarded(): boolean {
+  if (typeof window === "undefined") return true;
+  return localStorage.getItem(ONBOARDED_KEY) === "1";
+}
+
+export function Onboarding({ onComplete }: { onComplete: () => void }) {
+  const [screen, setScreen] = useState(0);
+  const [typed, setTyped] = useState("");
+
+  const screens = [
+    {
+      mascotMood: "idle" as const,
+      text: "¡Hola! Soy Neuro. En los próximos minutos vas a entender CÓMO funciona la IA — jugando.",
+      btn: "¡Vamos!",
+    },
+    {
+      mascotMood: "thinking" as const,
+      text: "Vas a construir esto desde cero. Nivel por nivel. Cada nivel es un mini-juego.",
+      btn: "Genial",
+    },
+    {
+      mascotMood: "excited" as const,
+      text: "Sin teoría aburrida. Sin textos largos. Solo juego. ¿List@?",
+      btn: "¡A jugar!",
+    },
+  ];
+
+  const current = screens[screen];
+
+  useEffect(() => {
+    setTyped("");
+    let i = 0;
+    const text = current.text;
+    const interval = setInterval(() => {
+      if (i < text.length) {
+        setTyped(text.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 25);
+    return () => clearInterval(interval);
+  }, [screen, current.text]);
+
+  const handleNext = () => {
+    if (screen < screens.length - 1) {
+      setScreen(screen + 1);
+    } else {
+      try { localStorage.setItem(ONBOARDED_KEY, "1"); } catch { /* */ }
+      onComplete();
+    }
+  };
+
+  const handleSkip = () => {
+    try { localStorage.setItem(ONBOARDED_KEY, "1"); } catch { /* */ }
+    onComplete();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center px-6"
+      style={{ background: "radial-gradient(ellipse at center, #1e0a3c 0%, #0d0518 70%)" }}
+    >
+      {/* Skip button */}
+      <button
+        onClick={handleSkip}
+        className="absolute top-4 right-4 text-xs text-slate-500 hover:text-slate-300 transition"
+      >
+        Saltar →
+      </button>
+
+      {/* Progress dots */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2">
+        {screens.map((_, i) => (
+          <div
+            key={i}
+            className={`w-2 h-2 rounded-full transition ${i === screen ? "bg-cyan-400" : "bg-slate-700"}`}
+          />
+        ))}
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={screen}
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -30 }}
+          className="flex flex-col items-center gap-6 max-w-md text-center"
+        >
+          <Mascot mood={current.mascotMood} size={140} trackCursor={false} />
+
+          <div className="min-h-[60px] flex items-center">
+            <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
+              {typed}
+              <span className="animate-pulse">▊</span>
+            </p>
+          </div>
+
+          <PulseButton onClick={handleNext} color="#22d3ee" className="px-8 py-3 text-base">
+            {current.btn}
+          </PulseButton>
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
+  );
+}
