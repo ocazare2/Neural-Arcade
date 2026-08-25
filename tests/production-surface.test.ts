@@ -49,4 +49,9 @@ describe("superficie publicada", () => {
     expect(app).toContain("APP_VERSION");
     expect(worker).toContain(`neural-arcade-v${pkg.version}`);
   });
+
+  test("no publica mensajes internos del error boundary", async () => {
+    const boundary = await read("src/app/neural-arcade/components/ErrorBoundary.tsx");
+    expect(boundary).toContain('process.env.NODE_ENV !== "production"');
+  });
 });

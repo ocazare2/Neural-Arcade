@@ -15,6 +15,7 @@ import {
   sanitizeProgress,
 } from "../src/app/neural-arcade/progress";
 import { recoverPersistedArcadeState } from "../src/app/neural-arcade/recovery";
+import { readBooleanFlag } from "../src/app/neural-arcade/storage";
 
 describe("Gradient Roller", () => {
   test("cada ronda inicia en la superficie que se muestra", () => {
@@ -102,6 +103,13 @@ describe("recuperación", () => {
 
   test("elimina almacenamiento irrecuperable", () => {
     expect(recoverPersistedArcadeState("{not-json")).toBeNull();
+  });
+
+  test("una política de privacidad que bloquea storage no rompe la portada", () => {
+    const blockedStorage = {
+      getItem: () => { throw new DOMException("blocked"); },
+    };
+    expect(readBooleanFlag(blockedStorage, "flag", true)).toBe(true);
   });
 });
 
