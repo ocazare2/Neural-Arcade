@@ -51,6 +51,7 @@ describe("superficie publicada", () => {
     expect(worker).not.toContain("cache.addAll");
     expect(worker).not.toContain(".catch(() => {})");
     expect(worker.match(/response\.ok|res\.ok/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(worker).toContain("event.origin !== self.location.origin");
   });
 
   test("usa una sola versión pública", async () => {
