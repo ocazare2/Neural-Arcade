@@ -144,13 +144,11 @@ export function QuizRunner({
               const showCorrect = picked !== null && isCorrect;
               const showWrong = picked === i && !isCorrect;
               return (
-                <div
+                <button
+                  type="button"
                   key={i}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => pick(i)}
-                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(i); } }}
-                  aria-disabled={picked !== null}
+                  disabled={picked !== null}
                   className={cn(
                     "w-full text-left rounded-lg border px-3 py-2.5 text-sm transition-all flex items-center justify-between gap-2 cursor-pointer",
                     showCorrect
@@ -162,10 +160,11 @@ export function QuizRunner({
                     picked !== null && "cursor-default"
                   )}
                 >
-                  <span>{highlightGlossary(opt, `opt-${idx}-${i}`)}</span>
+                  {/* Keep the native answer button free of nested glossary buttons. */}
+                  <span>{opt}</span>
                   {showCorrect && <Check className="w-4 h-4 flex-shrink-0" />}
                   {showWrong && <X className="w-4 h-4 flex-shrink-0" />}
-                </div>
+                </button>
               );
             })}
           </div>

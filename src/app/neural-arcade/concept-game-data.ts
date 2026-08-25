@@ -13,7 +13,7 @@ export const REQUIRED_CONCEPT_GAME_IDS = [
 
 export type ConceptGameId = (typeof REQUIRED_CONCEPT_GAME_IDS)[number];
 
-export interface ConceptGameRound {
+interface ConceptGameRound {
   prompt: string;
   options: readonly string[];
   correct: number;

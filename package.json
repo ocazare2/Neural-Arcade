@@ -24,7 +24,8 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "check": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "test:coverage": "bun test --coverage",
+    "check": "bun run lint && bun run typecheck && bun run test:coverage && bun run build",
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {

@@ -11,6 +11,8 @@ bun run check
 
 La entrega no debe publicarse si cualquiera de esas comprobaciones falla.
 
+El comando también exige una cobertura global mínima del 80%. En GitHub, CI y CodeQL se ejecutan automáticamente al abrir un pull request o actualizar `main`.
+
 ## 2. Despliegue recomendado: Vercel
 
 1. Entra a Vercel con la cuenta de GitHub que puede leer `ocazare2/Neural-Arcade`.

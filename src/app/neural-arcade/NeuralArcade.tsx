@@ -147,6 +147,7 @@ function HomeView() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const homeIsInert = showOnboarding || showResetConfirm;
   const totalStars = ALL_LEVELS.reduce((sum, level) => sum + (progress[level.id]?.stars ?? 0), 0);
   const completedCount = ALL_LEVELS.filter(level => progress[level.id]?.phasesDone?.includes("challenge")).length;
   const allDone = ALL_LEVELS.every(level => progress[level.id]?.phasesDone?.includes("challenge"));
@@ -199,6 +200,8 @@ function HomeView() {
       {/* Mute toggle — top-left */}
       <button
         onClick={() => sound.toggleMute()}
+        disabled={homeIsInert}
+        aria-hidden={homeIsInert ? true : undefined}
         className="fixed top-3 left-3 z-30 rounded-lg border border-slate-700 bg-slate-900/80 p-2 text-slate-300 hover:bg-slate-800 transition backdrop-blur"
         aria-label={sound.muted ? "Activar sonido" : "Silenciar"}
       >
@@ -229,7 +232,11 @@ function HomeView() {
         ))}
       </div>
 
-      <div className="relative max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
+      <main
+        className="relative max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10"
+        aria-hidden={homeIsInert ? true : undefined}
+        inert={homeIsInert ? true : undefined}
+      >
         {/* Header */}
         <header className="text-center mb-6">
           <motion.h1
@@ -378,7 +385,7 @@ function HomeView() {
             Reiniciar progreso
           </button>
         </footer>
-      </div>
+      </main>
 
       {/* Reset confirmation */}
       <AnimatePresence>
@@ -532,9 +539,9 @@ function LevelView({ level }: { level: LevelMeta }) {
                 <DemoComponent color={level.color} levelId={level.id} />
               </Suspense>
             ) : (
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 text-center">
-                <p className="text-sm text-slate-300 font-semibold mb-1">Demo interactiva en construcción</p>
-                <p className="text-xs text-slate-500">Este nivel no tiene demo todavía. Puedes continuar a la fase de Práctica.</p>
+              <div role="status" className="rounded-xl border border-rose-500/40 bg-rose-950/20 p-6 text-center">
+                <p className="text-sm text-rose-200 font-semibold mb-1">No se pudo cargar la demo</p>
+                <p className="text-xs text-slate-400">Recarga la página para intentarlo de nuevo. Tu progreso está guardado en este dispositivo.</p>
               </div>
             )}
             <NextPhaseButton currentPhase="demo" onNext={handleNext} color={level.color} />

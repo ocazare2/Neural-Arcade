@@ -24,6 +24,19 @@ describe("superficie publicada", () => {
     expect(onboarding).toContain('aria-modal="true"');
     expect(app).toContain('role="dialog"');
     expect(app).toContain('aria-modal="true"');
+    expect(app).toContain("inert={homeIsInert ? true : undefined}");
+  });
+
+  test("la portada expone un landmark principal", async () => {
+    const app = await read("src/app/neural-arcade/NeuralArcade.tsx");
+    expect(app).toContain("<main");
+  });
+
+  test("las respuestas de los cuestionarios usan botones nativos", async () => {
+    const runner = await read("src/app/neural-arcade/components/QuizRunner.tsx");
+    expect(runner).not.toContain('role="button"');
+    expect(runner).toContain('type="button"');
+    expect(runner).not.toContain("highlightGlossary(opt");
   });
 
   test("respeta la preferencia de movimiento reducido", async () => {
@@ -53,5 +66,17 @@ describe("superficie publicada", () => {
   test("no publica mensajes internos del error boundary", async () => {
     const boundary = await read("src/app/neural-arcade/components/ErrorBoundary.tsx");
     expect(boundary).toContain('process.env.NODE_ENV !== "production"');
+  });
+
+  test("permite hidratar en desarrollo sin generar archivos internos de agentes", async () => {
+    const config = await read("next.config.ts");
+    expect(config).toContain("agentRules: false");
+    expect(config).toContain('process.env.NODE_ENV === "development"');
+    expect(config).toContain("'unsafe-eval'");
+  });
+
+  test("los selectores de Zustand no crean fallbacks inestables", async () => {
+    const shell = await read("src/app/neural-arcade/components/LevelShell.tsx");
+    expect(shell).not.toContain("useArcade(s => s.progress[level.id]?.phasesDone ?? [])");
   });
 });

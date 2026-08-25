@@ -1,6 +1,6 @@
 import type { Phase, ProgressMap } from "./types";
 
-export const VALID_PHASES: readonly Phase[] = [
+const VALID_PHASES: readonly Phase[] = [
   "theory",
   "demo",
   "practice",
@@ -8,7 +8,7 @@ export const VALID_PHASES: readonly Phase[] = [
   "mastery",
 ];
 
-export function sanitizeStars(value: unknown): number {
+function sanitizeStars(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 0;
   return Math.min(3, Math.round(value));
 }
@@ -26,6 +26,13 @@ function sanitizeAttempts(value: unknown): number {
 export function sanitizePhase(value: unknown): Phase {
   if (typeof value === "string" && VALID_PHASES.includes(value as Phase)) return value as Phase;
   return "theory";
+}
+
+export function sanitizeActiveLevel(
+  value: unknown,
+  validLevelIds: ReadonlySet<string>,
+): string | null {
+  return typeof value === "string" && validLevelIds.has(value) ? value : null;
 }
 
 export function sanitizeProgress(

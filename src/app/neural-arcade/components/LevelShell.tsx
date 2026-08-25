@@ -15,6 +15,8 @@ const PHASES: { key: Phase; label: string; description: string }[] = [
   { key: "mastery", label: "Maestría", description: "Fórmula + paper + dato pro" },
 ];
 
+const EMPTY_PHASES: readonly Phase[] = [];
+
 export function LevelShell({
   level,
   currentPhase,
@@ -27,7 +29,10 @@ export function LevelShell({
   children: ReactNode;
 }) {
   const closeLevel = useArcade(s => s.closeLevel);
-  const completedPhases = useArcade(s => s.progress[level.id]?.phasesDone ?? []);
+  // Returning a fresh [] inside the selector changes the snapshot on every
+  // read and can trigger React's maximum-update-depth protection.
+  const storedPhases = useArcade(s => s.progress[level.id]?.phasesDone);
+  const completedPhases = storedPhases ?? EMPTY_PHASES;
   const phaseIdx = PHASES.findIndex(p => p.key === currentPhase);
   const highestCompletedIdx = PHASES.reduce(
     (highest, phase, index) => completedPhases.includes(phase.key) ? Math.max(highest, index) : highest,

@@ -6,6 +6,7 @@ import type { Phase, ProgressMap } from "./types";
 import { ALL_LEVELS } from "./curriculum";
 import {
   applyPhaseCompletion,
+  sanitizeActiveLevel,
   sanitizePhase,
   sanitizeProgress,
   sanitizeXp,
@@ -34,7 +35,10 @@ export const useArcade = create<ArcadeState>()(
       activeLevel: null,
       activePhase: "theory",
 
-      openLevel: (id) => set({ activeLevel: id, activePhase: "theory" }),
+      openLevel: (id) => set({
+        activeLevel: sanitizeActiveLevel(id, PUBLISHED_LEVEL_IDS),
+        activePhase: "theory",
+      }),
       closeLevel: () => set({ activeLevel: null, activePhase: "theory" }),
       setPhase: (p) => set({ activePhase: sanitizePhase(p) }),
 
@@ -60,7 +64,7 @@ export const useArcade = create<ArcadeState>()(
           ...current,
           progress: sanitizeProgress(p.progress, PUBLISHED_LEVEL_IDS),
           xp: sanitizeXp(p.xp),
-          activeLevel: typeof p.activeLevel === "string" ? p.activeLevel : null,
+          activeLevel: sanitizeActiveLevel(p.activeLevel, PUBLISHED_LEVEL_IDS),
           activePhase: sanitizePhase(p.activePhase),
         };
       },

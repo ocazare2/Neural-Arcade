@@ -7,7 +7,7 @@ Juego educativo web para aprender inteligencia artificial desde cero mediante **
 ## Qué incluye
 
 - Ruta completa desde matemáticas y redes neuronales hasta LLM, RAG, agentes, MCP, seguridad y escalado.
-- 26 demos o minijuegos, progreso y sonido guardados localmente en el navegador.
+- 26 demos o minijuegos completos, progreso y sonido guardados localmente en el navegador.
 - 3 preguntas de práctica y al menos 5 preguntas de reto por nivel.
 - Diseño responsive en español, PWA instalable y soporte offline progresivo.
 - Metadatos sociales, datos estructurados, sitemap y robots listos para indexación.
@@ -33,14 +33,14 @@ Abre <http://localhost:3000>.
 ## Calidad y producción
 
 ```bash
-# Lint estricto, tipos, pruebas y build de producción
+# Lint estricto, tipos, cobertura mínima del 80% y build de producción
 bun run check
 
 # Ejecutar el servidor construido
 bun run start
 ```
 
-La suite valida los 26 niveles, su orden, la integridad del contenido, los cuestionarios, el rate limiter y los recursos de publicación.
+La suite valida los 26 niveles, su orden, la integridad del contenido, los cuestionarios, los motores de juego, la persistencia, el rate limiter y los recursos de publicación. GitHub Actions ejecuta la misma comprobación en cada cambio; CodeQL y Dependabot vigilan el código y las dependencias.
 
 ## Variables de entorno
 
@@ -94,4 +94,4 @@ No publiques archivos `.env*` ni tokens. Las vulnerabilidades se pueden reportar
 
 MIT. Creado por Ozkar K. Azares.
 
-Proyecto hecho 100% con inteligencia artificial.
+Proyecto hecho 100% con inteligencia artificial. El contenido y el software deben revisarse por una persona antes de reutilizarlos en contextos críticos.

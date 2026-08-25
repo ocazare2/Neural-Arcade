@@ -363,7 +363,7 @@ export function GlossaryInline({ term, def }: { term: string; def: string }) {
 
   const handleClick = (e: React.MouseEvent) => {
     // Stop propagation so that if this glossary term sits inside a clickable
-    // parent (e.g., a quiz-option <div role="button">), clicking the term
+    // parent, clicking the term
     // only toggles the tooltip — it does NOT also pick the answer.
     e.stopPropagation();
     if (open) {
