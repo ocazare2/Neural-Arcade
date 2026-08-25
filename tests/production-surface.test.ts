@@ -64,6 +64,11 @@ describe("superficie publicada", () => {
     expect(worker).toContain(`neural-arcade-v${pkg.version}`);
   });
 
+  test("fija la versión mayor de Node usada en producción", async () => {
+    const pkg = await Bun.file(join(root, "package.json")).json();
+    expect(pkg.engines.node).toBe("24.x");
+  });
+
   test("no publica mensajes internos del error boundary", async () => {
     const boundary = await read("src/app/neural-arcade/components/ErrorBoundary.tsx");
     expect(boundary).toContain('process.env.NODE_ENV !== "production"');
