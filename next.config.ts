@@ -21,7 +21,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   agentRules: false,
-  output: "standalone",
+  // Vercel injects a Next.js build adapter and packages the runtime itself.
+  // Next 16.3 cannot combine that adapter with standalone output.
+  output: process.env.VERCEL ? undefined : "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {

@@ -76,6 +76,13 @@ describe("superficie publicada", () => {
     expect(config).toContain("'unsafe-eval'");
   });
 
+  test("evita el conflicto entre standalone y el adaptador de Vercel", async () => {
+    const config = await read("next.config.ts");
+    const prepareStandalone = await read("scripts/prepare-standalone.mjs");
+    expect(config).toContain('output: process.env.VERCEL ? undefined : "standalone"');
+    expect(prepareStandalone).toContain("if (process.env.VERCEL)");
+  });
+
   test("los selectores de Zustand no crean fallbacks inestables", async () => {
     const shell = await read("src/app/neural-arcade/components/LevelShell.tsx");
     expect(shell).not.toContain("useArcade(s => s.progress[level.id]?.phasesDone ?? [])");

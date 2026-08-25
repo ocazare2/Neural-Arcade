@@ -1,6 +1,9 @@
 import { cp } from "node:fs/promises";
 import { join } from "node:path";
 
+// Vercel packages the Next.js runtime through its own build adapter.
+if (process.env.VERCEL) process.exit(0);
+
 const root = process.cwd();
 const standalone = join(root, ".next", "standalone");
 
