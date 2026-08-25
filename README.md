@@ -93,3 +93,5 @@ No publiques archivos `.env*` ni tokens. Las vulnerabilidades se pueden reportar
 ## Licencia
 
 MIT. Creado por Ozkar K. Azares.
+
+Proyecto hecho 100% con inteligencia artificial.
