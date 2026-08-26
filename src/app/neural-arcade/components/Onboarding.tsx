@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mascot } from "./Mascot";
 import { PulseButton } from "./Polish";
 import { readBooleanFlag, writeBooleanFlag } from "../storage";
+import { useLocale } from "../i18n";
+import { ExperienceControls } from "./ExperienceControls";
 
 const ONBOARDED_KEY = "neural-arcade-onboarded";
 
@@ -18,24 +20,25 @@ export function hasBeenOnboarded(): boolean {
 }
 
 export function Onboarding({ onComplete }: { onComplete: () => void }) {
+  const { t } = useLocale();
   const [screen, setScreen] = useState(0);
   const [typed, setTyped] = useState("");
 
   const screens = [
     {
       mascotMood: "idle" as const,
-      text: "¡Hola! Soy Neuro. En los próximos minutos vas a entender CÓMO funciona la IA — jugando.",
-      btn: "¡Vamos!",
+      text: t("onboarding1"),
+      btn: t("onboarding1Button"),
     },
     {
       mascotMood: "thinking" as const,
-      text: "Vas a construir esto desde cero. Nivel por nivel. Cada nivel es un mini-juego.",
-      btn: "Genial",
+      text: t("onboarding2"),
+      btn: t("onboarding2Button"),
     },
     {
       mascotMood: "excited" as const,
-      text: "Sin teoría aburrida. Sin textos largos. Solo juego. ¿List@?",
-      btn: "¡A jugar!",
+      text: t("onboarding3"),
+      btn: t("onboarding3Button"),
     },
   ];
 
@@ -86,7 +89,7 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
     }
     if (event.key !== "Tab") return;
     const controls = [...event.currentTarget.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      'button:not([disabled]), select:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )];
     if (controls.length === 0) return;
     const first = controls[0];
@@ -112,12 +115,14 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
       className="fixed inset-0 z-[60] flex flex-col items-center justify-center px-6"
       style={{ background: "radial-gradient(ellipse at center, #1e0a3c 0%, #0d0518 70%)" }}
     >
+      <ExperienceControls compact className="absolute left-3 top-3" />
+
       {/* Skip button */}
       <button
         onClick={handleSkip}
         className="absolute top-4 right-4 text-xs text-slate-500 hover:text-slate-300 transition"
       >
-        Saltar →
+        {t("skip")}
       </button>
 
       {/* Progress dots */}

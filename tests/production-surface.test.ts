@@ -14,7 +14,9 @@ describe("superficie publicada", () => {
 
   test("muestra el crédito de creación con IA dentro de la aplicación", async () => {
     const app = await read("src/app/neural-arcade/NeuralArcade.tsx");
-    expect(app).toContain("100% con inteligencia artificial");
+    const messages = await read("src/app/neural-arcade/i18n.tsx");
+    expect(app).toContain('t("aiCredit")');
+    expect(messages).toContain("100% con inteligencia artificial");
   });
 
   test("los diálogos declaran semántica modal", async () => {

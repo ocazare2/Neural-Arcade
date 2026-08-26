@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useId, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronDown, BookOpen, Sparkles, Trophy, Info, Lightbulb } from "lucide-react";
 import { ALL_GLOSSARY_TERMS, lookupGlossary } from "../glossary";
 import { normalizeMathCommands } from "../math-format";
+import { getGlossaryPopoverLayout } from "../glossary-layout";
+import type { GlossaryPopoverLayout } from "../glossary-layout";
+import { useLocale } from "../i18n";
 import { cn } from "@/lib/utils";
 
 // ───────────────────────────────────────────────────────────
@@ -12,6 +16,7 @@ import { cn } from "@/lib/utils";
 // Soporta subíndices con _, superíndices con ^, fracciones con \frac{}{}
 // ───────────────────────────────────────────────────────────
 export function Formula({ children, explain }: { children: string; explain?: string }) {
+  const { t } = useLocale();
   const [showExplain, setShowExplain] = useState(false);
   return (
     <div className="my-3">
@@ -25,7 +30,7 @@ export function Formula({ children, explain }: { children: string; explain?: str
             className="text-xs text-cyan-400/80 hover:text-cyan-300 flex items-center gap-1"
           >
             {showExplain ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            {showExplain ? "Ocultar explicación" : "Explicar la fórmula"}
+            {showExplain ? t("hideExplanation") : t("explainFormula")}
           </button>
           <AnimatePresence>
             {showExplain && (
@@ -186,6 +191,7 @@ export function TheorySection({
   children: ReactNode;
   defaultOpen?: boolean;
 }) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(defaultOpen);
   // `overflow-hidden` is required during the height animation (entry/exit) so
   // the content doesn't spill outside the shrinking/growing box. But once the
@@ -216,7 +222,12 @@ export function TheorySection({
       >
         <div className="flex items-center gap-3 text-left">
           <span className={cn("text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border", levelColor)}>
-            {level}
+            {{
+              "Básico": t("basic"),
+              "Intermedio": t("intermediate"),
+              "Avanzado": t("advanced"),
+              "Experto": t("expert"),
+            }[level]}
           </span>
           <span className="text-sm font-semibold text-slate-100">{title}</span>
         </div>
@@ -280,56 +291,37 @@ let _activeGlossaryRef: { close: () => void } | null = null;
 
 export function GlossaryInline({ term, def }: { term: string; def: string }) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<"left" | "right">("left");
-  const [vertical, setVertical] = useState<"below" | "above">("below");
+  const [layout, setLayout] = useState<GlossaryPopoverLayout | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const spanRef = useRef<HTMLSpanElement>(null);
+  const tooltipId = useId();
+
+  const measure = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setLayout(getGlossaryPopoverLayout(rect, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    }));
+  }, []);
 
   useLayoutEffect(() => {
-    if (!open || !btnRef.current) return;
-    const rect = btnRef.current.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const TOOLTIP_WIDTH = 256; // w-64 = 16rem = 256px
-    const TOOLTIP_HEIGHT = 120; // approximate max height
-    const MARGIN = 8;
-    // Horizontal: flip right→left if tooltip would overflow right edge.
-    const wouldOverflowRight = rect.left + TOOLTIP_WIDTH > viewportWidth - MARGIN;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement before paint is the canonical useLayoutEffect use case (prevents tooltip flicker)
-    setPosition(wouldOverflowRight ? "right" : "left");
-    // Vertical: prefer "below". Only flip to "above" if "below" would overflow
-    // the bottom AND "above" actually fits. Otherwise we'd hide the tooltip
-    // behind the sticky LevelShell header (which sits at the top of the viewport).
-    const wouldOverflowBottom = rect.bottom + TOOLTIP_HEIGHT > viewportHeight - MARGIN;
-    const wouldOverflowTop = rect.top - TOOLTIP_HEIGHT < MARGIN;
-    setVertical(wouldOverflowBottom && !wouldOverflowTop ? "above" : "below");
-  }, [open]);
+    if (!open) return;
+    measure();
+  }, [open, measure]);
 
   // Re-measure on resize/scroll/orientation change while tooltip is open
   useEffect(() => {
     if (!open) return;
-    const remeasure = () => {
-      if (!btnRef.current) return;
-      const rect = btnRef.current.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const TOOLTIP_WIDTH = 256;
-      const TOOLTIP_HEIGHT = 120;
-      const MARGIN = 8;
-      setPosition(rect.left + TOOLTIP_WIDTH > viewportWidth - MARGIN ? "right" : "left");
-      const wouldOverflowBottom = rect.bottom + TOOLTIP_HEIGHT > viewportHeight - MARGIN;
-      const wouldOverflowTop = rect.top - TOOLTIP_HEIGHT < MARGIN;
-      setVertical(wouldOverflowBottom && !wouldOverflowTop ? "above" : "below");
-    };
-    window.addEventListener("resize", remeasure);
-    window.addEventListener("scroll", remeasure, true);
-    window.addEventListener("orientationchange", remeasure);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("orientationchange", measure);
     return () => {
-      window.removeEventListener("resize", remeasure);
-      window.removeEventListener("scroll", remeasure, true);
-      window.removeEventListener("orientationchange", remeasure);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("orientationchange", measure);
     };
-  }, [open]);
+  }, [open, measure]);
 
   useEffect(() => {
     if (!open) return;
@@ -368,6 +360,7 @@ export function GlossaryInline({ term, def }: { term: string; def: string }) {
     e.stopPropagation();
     if (open) {
       setOpen(false);
+      setLayout(null);
       _activeGlossaryRef = null;
       closeFnRef.current = null;
       return;
@@ -379,12 +372,6 @@ export function GlossaryInline({ term, def }: { term: string; def: string }) {
     _activeGlossaryRef = { close };
   };
 
-  const tooltipClasses = cn(
-    "absolute z-50 w-64 max-w-[75vw] rounded-lg border border-cyan-500/40 bg-slate-900 px-3 py-2 text-xs text-slate-200 shadow-xl text-left font-normal block",
-    position === "right" ? "right-0" : "left-0",
-    vertical === "above" ? "bottom-full mb-1" : "top-full mt-1"
-  );
-
   return (
     <span ref={spanRef} className="relative inline-block">
       <button
@@ -392,23 +379,36 @@ export function GlossaryInline({ term, def }: { term: string; def: string }) {
         onClick={handleClick}
         className="text-cyan-400 underline decoration-dotted underline-offset-2 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 rounded"
         aria-expanded={open}
+        aria-describedby={open ? tooltipId : undefined}
         aria-label={`Definición de ${term}`}
       >
         {term}
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.span
-            initial={{ opacity: 0, y: vertical === "above" ? 4 : -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: vertical === "above" ? 4 : -4 }}
-            className={tooltipClasses}
-            role="tooltip"
-          >
-            <span className="font-semibold text-cyan-300">{term}: </span>{def}
-          </motion.span>
-        )}
-      </AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.span
+              id={tooltipId}
+              initial={{ opacity: 0, y: layout?.bottom !== undefined ? 4 : -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: layout?.bottom !== undefined ? 4 : -4 }}
+              className="fixed z-[100] block overflow-y-auto overscroll-contain rounded-xl border border-cyan-500/40 bg-slate-950 px-4 py-3 text-left text-xs font-normal leading-relaxed text-slate-200 shadow-2xl [overflow-wrap:anywhere]"
+              style={{
+                left: layout?.left ?? 12,
+                width: layout?.width ?? "calc(100vw - 24px)",
+                top: layout?.top,
+                bottom: layout?.bottom,
+                maxHeight: layout?.maxHeight,
+                visibility: layout ? "visible" : "hidden",
+              }}
+              role="tooltip"
+            >
+              <span className="font-semibold text-cyan-300">{term}: </span>{def}
+            </motion.span>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </span>
   );
 }
@@ -418,11 +418,12 @@ export function GlossaryInline({ term, def }: { term: string; def: string }) {
 // Caja de "Dato Pro" — referencias a papers
 // ───────────────────────────────────────────────────────────
 export function PaperRef({ title, year, authors }: { title: string; year: number; authors: string }) {
+  const { t } = useLocale();
   return (
     <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
       <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold mb-1">
         <BookOpen className="w-3.5 h-3.5" />
-        PAPER DE REFERENCIA
+        {t("paperReference")}
       </div>
       <p className="text-sm text-slate-200 italic">&ldquo;{title}&rdquo;</p>
       <p className="text-xs text-slate-400 mt-0.5">{authors} · {year}</p>

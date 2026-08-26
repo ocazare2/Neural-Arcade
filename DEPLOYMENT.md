@@ -17,7 +17,7 @@ El comando también exige una cobertura global mínima del 80%. En GitHub, CI y 
 
 1. Entra a Vercel con la cuenta de GitHub que puede leer `ocazare2/Neural-Arcade`.
 2. Selecciona **Add New → Project**, importa el repositorio y deja el framework en **Next.js**.
-3. Usa Node.js 22 o posterior. Vercel detectará Bun por `bun.lock`.
+3. Usa Node.js 24.x. Vercel detectará Bun por `bun.lock`.
 4. Configura las variables descritas abajo.
 5. Despliega primero en Preview; cuando las verificaciones sean correctas, promueve a Production.
 
@@ -52,7 +52,8 @@ Comprueba:
 - manifest, iconos, service worker, robots y sitemap accesibles;
 - cabeceras CSP, `X-Content-Type-Options`, `X-Frame-Options` y `Referrer-Policy`;
 - instalación PWA desde un navegador móvil o una ventana privada;
-- progreso, reinicio, sonido y navegación por niveles.
+- progreso, reinicio, selector ES/EN, música tras la primera interacción y navegación por niveles;
+- definiciones del glosario completamente visibles a 320 px de ancho.
 
 ## 5. Dominio e indexación
 

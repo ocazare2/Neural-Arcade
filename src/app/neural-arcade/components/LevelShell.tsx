@@ -6,13 +6,16 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { LevelMeta, Phase } from "../types";
 import { useArcade } from "../store";
+import { useLocale } from "../i18n";
+import type { MessageKey } from "../i18n";
+import { ExperienceControls } from "./ExperienceControls";
 
-const PHASES: { key: Phase; label: string; description: string }[] = [
-  { key: "theory", label: "Teoría", description: "Conceptos y fórmulas" },
-  { key: "demo", label: "Demo", description: "Demostración interactiva" },
-  { key: "practice", label: "Práctica", description: "Ejercicio guiado" },
-  { key: "challenge", label: "Reto", description: "Sin pistas, con puntaje" },
-  { key: "mastery", label: "Maestría", description: "Fórmula + paper + dato pro" },
+const PHASES: { key: Phase; labelKey: MessageKey }[] = [
+  { key: "theory", labelKey: "phaseTheory" },
+  { key: "demo", labelKey: "phaseDemo" },
+  { key: "practice", labelKey: "phasePractice" },
+  { key: "challenge", labelKey: "phaseChallenge" },
+  { key: "mastery", labelKey: "phaseMastery" },
 ];
 
 const EMPTY_PHASES: readonly Phase[] = [];
@@ -29,6 +32,7 @@ export function LevelShell({
   children: ReactNode;
 }) {
   const closeLevel = useArcade(s => s.closeLevel);
+  const { t } = useLocale();
   // Returning a fresh [] inside the selector changes the snapshot on every
   // read and can trigger React's maximum-update-depth protection.
   const storedPhases = useArcade(s => s.progress[level.id]?.phasesDone);
@@ -51,7 +55,7 @@ export function LevelShell({
           <button
             onClick={closeLevel}
             className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-slate-300 hover:bg-slate-800 transition"
-            aria-label="Volver"
+            aria-label={t("back")}
           >
             <Home className="w-4 h-4" />
           </button>
@@ -59,15 +63,16 @@ export function LevelShell({
             <div className="flex items-center gap-2">
               <span className="text-lg" aria-hidden>{level.icon}</span>
               <h1 className="text-sm font-bold tracking-wide" style={{ color: level.color }}>
-                NIVEL {level.index + 1} · {level.title}
+                {t("level")} {level.index + 1} · {level.title}
               </h1>
             </div>
             <p className="text-[11px] text-slate-400 truncate">{level.tag}</p>
           </div>
           <div className="hidden sm:flex items-center gap-1 text-xs text-slate-400">
             <GraduationCap className="w-3.5 h-3.5" />
-            ~{level.estimatedMin}min
+            ~{level.estimatedMin}{t("minute")}
           </div>
+          <ExperienceControls compact className="flex-shrink-0 border-0 bg-transparent p-0 shadow-none" />
         </div>
 
         {/* Phase stepper */}
@@ -107,7 +112,7 @@ export function LevelShell({
                       active ? "text-slate-100" : done ? "text-slate-300" : "text-slate-500"
                     )}
                   >
-                    {p.label}
+                    {t(p.labelKey)}
                   </span>
                 </button>
               );
@@ -146,6 +151,7 @@ export function NextPhaseButton({
   color: string;
   label?: string;
 }) {
+  const { t } = useLocale();
   const next = PHASES[PHASES.findIndex(p => p.key === currentPhase) + 1];
   return (
     <motion.button
@@ -159,7 +165,7 @@ export function NextPhaseButton({
         boxShadow: `0 6px 24px ${color}55`,
       }}
     >
-      {label ?? (next ? `CONTINUAR A ${next.label.toUpperCase()}` : "COMPLETAR NIVEL")}
+      {label ?? (next ? `${t("continueTo")} ${t(next.labelKey).toUpperCase()}` : t("completeLevel"))}
       {next && <ArrowRight className="w-4 h-4" />}
     </motion.button>
   );
@@ -179,6 +185,7 @@ export function LevelComplete({
   onRetry: () => void;
   onNextLevel: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <div className="text-center py-8">
       <motion.div
@@ -204,11 +211,11 @@ export function LevelComplete({
         ))}
       </div>
       <h2 className="text-2xl font-extrabold tracking-wider mb-1" style={{ color: level.color }}>
-        {isLastLevel ? "¡ARQUITECTO DE IA!" : "¡NIVEL COMPLETADO!"}
+        {isLastLevel ? t("aiArchitect") : t("levelComplete")}
       </h2>
       <p className="text-sm text-slate-400 mb-6">
-        Has dominado <b className="text-slate-200">{level.title}</b>
-        {isLastLevel && " · Has completado todos los niveles."}
+        {t("mastered")} <b className="text-slate-200">{level.title}</b>
+        {isLastLevel && ` · ${t("allLevelsComplete")}`}
       </p>
       <div className="flex gap-2">
         <button
@@ -216,14 +223,14 @@ export function LevelComplete({
           className="flex-1 rounded-xl border border-slate-700 bg-slate-900 py-3 text-sm font-semibold text-slate-300 hover:bg-slate-800 transition flex items-center justify-center gap-2"
         >
           <RotateCcw className="w-4 h-4" />
-          Repetir
+          {t("retry")}
         </button>
         <button
           onClick={onNextLevel}
           className="flex-1 rounded-xl py-3 text-sm font-bold text-[#0a0414] flex items-center justify-center gap-2"
           style={{ background: level.color }}
         >
-          {isLastLevel ? "Volver al mapa" : "Siguiente nivel"}
+          {isLastLevel ? t("backToMap") : t("nextLevel")}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

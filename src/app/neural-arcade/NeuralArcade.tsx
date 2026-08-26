@@ -2,7 +2,7 @@
 
 import { useState, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Zap, Lock, Trophy, ChevronRight, RotateCcw, Sparkles, BookOpen, Play, Volume2, VolumeX, Heart } from "lucide-react";
+import { Star, Zap, Lock, Trophy, ChevronRight, RotateCcw, Sparkles, BookOpen, Play, Heart } from "lucide-react";
 import { useArcade } from "./store";
 import { LevelShell, NextPhaseButton, LevelComplete } from "./components/LevelShell";
 import { TheoryPhase, MasteryPhase } from "./components/StandardPhases";
@@ -11,10 +11,11 @@ import { PRACTICE_QUESTIONS, CHALLENGE_QUESTIONS } from "./quizzes";
 import { Mascot, pickPhrase } from "./components/Mascot";
 import { Onboarding, hasBeenOnboarded } from "./components/Onboarding";
 import { PulseButton } from "./components/Polish";
-import { useSound } from "./lib/sound";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ExperienceControls } from "./components/ExperienceControls";
 import type { Phase, LevelMeta } from "./types";
 import { ALL_LEVELS } from "./curriculum";
+import { LocaleProvider, useLocale } from "./i18n";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
 
@@ -69,10 +70,11 @@ const ModernConceptGame = lazy(() =>
 
 // Loading fallback shown while a mini-game chunk is being fetched.
 function GameLoader() {
+  const { t } = useLocale();
   return (
     <div className="flex items-center justify-center py-20" role="status" aria-live="polite">
       <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-      <span className="sr-only">Cargando demo…</span>
+      <span className="sr-only">{t("loadingDemo")}</span>
     </div>
   );
 }
@@ -109,6 +111,14 @@ const DEMOS: Record<string, React.ComponentType<{ color: string; levelId?: strin
 const PHASE_ORDER: Phase[] = ["theory", "demo", "practice", "challenge", "mastery"];
 
 export default function NeuralArcade() {
+  return (
+    <LocaleProvider>
+      <NeuralArcadeContent />
+    </LocaleProvider>
+  );
+}
+
+function NeuralArcadeContent() {
   const { activeLevel, activePhase, closeLevel } = useArcade();
 
   // Scroll to top on phase change
@@ -143,7 +153,7 @@ export default function NeuralArcade() {
 // ═══════════════════════════════════════════════════════════
 function HomeView() {
   const { progress, xp, openLevel, reset } = useArcade();
-  const sound = useSound();
+  const { t } = useLocale();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -166,7 +176,7 @@ function HomeView() {
     return unlocked && !done;
   });
   const playLevelId = firstPlayableIdx >= 0 ? ALL_LEVELS[firstPlayableIdx].id : ALL_LEVELS[0].id;
-  const playLabel = firstPlayableIdx <= 0 ? "EMPEZAR A JUGAR" : "CONTINUAR";
+  const playLabel = firstPlayableIdx <= 0 ? t("play") : t("continue");
 
   const isUnlocked = (i: number) => i === 0 || progress[ALL_LEVELS[i - 1].id]?.phasesDone?.includes("challenge");
 
@@ -197,16 +207,10 @@ function HomeView() {
         <Onboarding onComplete={() => setShowOnboarding(false)} />
       )}
 
-      {/* Mute toggle — top-left */}
-      <button
-        onClick={() => sound.toggleMute()}
+      <ExperienceControls
         disabled={homeIsInert}
-        aria-hidden={homeIsInert ? true : undefined}
-        className="fixed top-3 left-3 z-30 rounded-lg border border-slate-700 bg-slate-900/80 p-2 text-slate-300 hover:bg-slate-800 transition backdrop-blur"
-        aria-label={sound.muted ? "Activar sonido" : "Silenciar"}
-      >
-        {sound.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-      </button>
+        className="fixed left-3 top-3 z-30"
+      />
 
       {/* Mascot — top-right */}
       {mounted && !showOnboarding && (
@@ -233,7 +237,7 @@ function HomeView() {
       </div>
 
       <main
-        className="relative max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10"
+        className="relative max-w-3xl mx-auto px-3 sm:px-4 pb-6 pt-20 sm:py-10"
         aria-hidden={homeIsInert ? true : undefined}
         inert={homeIsInert ? true : undefined}
       >
@@ -248,7 +252,7 @@ function HomeView() {
             NEURAL ARCADE
           </motion.h1>
           <p className="text-[11px] sm:text-xs tracking-[0.3em] text-slate-500 mt-2 uppercase">
-            De matemáticas a sistemas agentic · 26 niveles
+            {t("tagline")}
           </p>
         </header>
 
@@ -266,9 +270,9 @@ function HomeView() {
 
         {/* Stats bar */}
         <div className="flex items-center justify-center gap-4 sm:gap-6 mb-6">
-          <Stat icon={<Star className="w-4 h-4" />} value={`${totalStars}/${ALL_LEVELS.length * 3}`} label="estrellas" color="#fde047" />
-          <Stat icon={<Zap className="w-4 h-4" />} value={xp} label="XP" color="#22d3ee" />
-          <Stat icon={<Trophy className="w-4 h-4" />} value={`${completedCount}/${ALL_LEVELS.length}`} label="niveles" color="#a78bfa" />
+          <Stat icon={<Star className="w-4 h-4" />} value={`${totalStars}/${ALL_LEVELS.length * 3}`} label={t("stars")} color="#fde047" />
+          <Stat icon={<Zap className="w-4 h-4" />} value={xp} label={t("xp")} color="#22d3ee" />
+          <Stat icon={<Trophy className="w-4 h-4" />} value={`${completedCount}/${ALL_LEVELS.length}`} label={t("levels")} color="#a78bfa" />
         </div>
 
         {allDone && (
@@ -278,10 +282,9 @@ function HomeView() {
             className="rounded-2xl border-2 border-amber-400/60 bg-gradient-to-br from-amber-500/15 to-fuchsia-500/10 p-5 text-center mb-6"
           >
             <div className="text-4xl mb-2">🏆</div>
-            <p className="text-amber-300 font-extrabold tracking-wider">ARQUITECTO DE IA</p>
+            <p className="text-amber-300 font-extrabold tracking-wider">{t("architect")}</p>
             <p className="text-xs text-slate-300 mt-1.5">
-              Has dominado desde tokenización hasta orquestación multi-agente.
-              El siguiente paso: construye tu propio sistema.
+              {t("allDone")}
             </p>
           </motion.div>
         )}
@@ -366,15 +369,15 @@ function HomeView() {
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t border-slate-800 text-center space-y-4">
           <p className="text-xs text-slate-500">
-            Neural Arcade v{APP_VERSION} · {ALL_LEVELS.length} niveles · {ALL_LEVELS.reduce((s, l) => s + l.theory.length, 0)} bloques de teoría · 26 demos · glosario interactivo
+            Neural Arcade v{APP_VERSION} · {ALL_LEVELS.length} {t("levels")} · {ALL_LEVELS.reduce((s, l) => s + l.theory.length, 0)} {t("theoryBlocks")} · 26 {t("demos")} · {t("interactiveGlossary")}
           </p>
 
           {/* Made with */}
           <p className="text-[10px] text-slate-600 flex items-center justify-center gap-1">
-            Hecho con <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" /> para aprender IA jugando
+            <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" /> {t("madeFor")}
           </p>
           <p className="text-[10px] text-slate-500">
-            Proyecto creado 100% con inteligencia artificial.
+            {t("aiCredit")}
           </p>
 
           <button
@@ -382,7 +385,7 @@ function HomeView() {
             className="text-xs text-slate-600 hover:text-slate-400 inline-flex items-center gap-1"
           >
             <RotateCcw className="w-3 h-3" />
-            Reiniciar progreso
+            {t("resetProgress")}
           </button>
         </footer>
       </main>
@@ -409,21 +412,21 @@ function HomeView() {
               aria-describedby="reset-progress-description"
               className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full"
             >
-              <p id="reset-progress-title" className="text-sm font-bold text-slate-100 mb-2">¿Reiniciar todo el progreso?</p>
-              <p id="reset-progress-description" className="text-xs text-slate-400 mb-4">Perderás todas tus estrellas, XP y fases completadas. No se puede deshacer.</p>
+              <p id="reset-progress-title" className="text-sm font-bold text-slate-100 mb-2">{t("resetTitle")}</p>
+              <p id="reset-progress-description" className="text-xs text-slate-400 mb-4">{t("resetDescription")}</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => { reset(); setShowResetConfirm(false); }}
                   className="flex-1 rounded-lg bg-rose-500 py-2 text-sm font-bold text-white hover:bg-rose-600"
                 >
-                  Sí, reiniciar
+                  {t("confirmReset")}
                 </button>
                 <button
                   autoFocus
                   onClick={() => setShowResetConfirm(false)}
                   className="flex-1 rounded-lg border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800"
                 >
-                  Cancelar
+                  {t("cancel")}
                 </button>
               </div>
             </motion.div>
@@ -451,6 +454,7 @@ function Stat({ icon, value, label, color }: { icon: React.ReactNode; value: Rea
 // ═══════════════════════════════════════════════════════════
 function LevelView({ level }: { level: LevelMeta }) {
   const { activePhase, setPhase, completePhase, closeLevel, openLevel, progress } = useArcade();
+  const { t } = useLocale();
   const [challengeStars, setChallengeStars] = useState<number | null>(null);
   const [showComplete, setShowComplete] = useState(false);
 
@@ -540,8 +544,8 @@ function LevelView({ level }: { level: LevelMeta }) {
               </Suspense>
             ) : (
               <div role="status" className="rounded-xl border border-rose-500/40 bg-rose-950/20 p-6 text-center">
-                <p className="text-sm text-rose-200 font-semibold mb-1">No se pudo cargar la demo</p>
-                <p className="text-xs text-slate-400">Recarga la página para intentarlo de nuevo. Tu progreso está guardado en este dispositivo.</p>
+                <p className="text-sm text-rose-200 font-semibold mb-1">{t("demoLoadError")}</p>
+                <p className="text-xs text-slate-400">{t("reloadToRetry")}</p>
               </div>
             )}
             <NextPhaseButton currentPhase="demo" onNext={handleNext} color={level.color} />
@@ -553,7 +557,7 @@ function LevelView({ level }: { level: LevelMeta }) {
             <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-3 mb-4 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-cyan-400 flex-shrink-0" />
               <p className="text-xs text-slate-300">
-                Práctica con pistas. Estas preguntas no afectan tu puntaje, son para prepararte al reto.
+                {t("practiceIntro")}
               </p>
             </div>
             <QuizRunner
@@ -564,7 +568,7 @@ function LevelView({ level }: { level: LevelMeta }) {
               // warm-up. We deliberately ignore the (stars, correct, total)
               // callback. The handleNext below marks the phase as done.
             />
-            <NextPhaseButton currentPhase="practice" onNext={handleNext} color={level.color} label="CONTINUAR AL RETO" />
+            <NextPhaseButton currentPhase="practice" onNext={handleNext} color={level.color} label={t("continueChallenge")} />
           </div>
         )}
 
@@ -573,7 +577,7 @@ function LevelView({ level }: { level: LevelMeta }) {
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 mb-4 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <p className="text-xs text-slate-300">
-                Reto final · {challengeQs.length} preguntas · sin pistas · tu puntaje determina las estrellas.
+                {t("finalChallenge")} · {challengeQs.length} {t("questions")} · {t("noHints")} · {t("scoreDetermines")}.
               </p>
             </div>
             <QuizRunner
@@ -589,7 +593,7 @@ function LevelView({ level }: { level: LevelMeta }) {
                 currentPhase="challenge"
                 onNext={handleNext}
                 color={level.color}
-                label="CONTINUAR A MAESTRÍA"
+                label={t("continueMastery")}
               />
             )}
           </div>
@@ -602,7 +606,7 @@ function LevelView({ level }: { level: LevelMeta }) {
               currentPhase="mastery"
               onNext={handleNext}
               color={level.color}
-              label="COMPLETAR NIVEL"
+              label={t("completeLevel")}
             />
           </div>
         )}

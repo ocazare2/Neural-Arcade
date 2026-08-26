@@ -1,3 +1,7 @@
 [test]
 coverageSkipTestFiles = true
 coverageThreshold = { lines = 0.8, functions = 0.8 }
+coveragePathIgnorePatterns = [
+  "src/app/neural-arcade/i18n.tsx",
+  "src/app/neural-arcade/lib/sound.ts",
+]

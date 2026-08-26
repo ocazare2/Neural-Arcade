@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Sparkles, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { highlightGlossary } from "./ui";
+import { useLocale } from "../i18n";
 
 export interface QuizQuestion {
   question: string;
@@ -30,6 +31,13 @@ export function QuizRunner({
   onComplete?: (stars: number, correct: number, total: number) => void;
   showHint?: boolean;
 }) {
+  const { t } = useLocale();
+  const difficultyLabels = {
+    "Básico": t("basic"),
+    "Intermedio": t("intermediate"),
+    "Avanzado": t("advanced"),
+    "Experto": t("expert"),
+  } as const;
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [mistakes, setMistakes] = useState(0);
@@ -46,9 +54,9 @@ export function QuizRunner({
     return (
       <div className="text-center py-8 px-4 rounded-xl border border-slate-700/50 bg-slate-900/40">
         <BookOpen className="w-8 h-8 mx-auto mb-2 text-slate-500" />
-        <p className="text-sm text-slate-300 font-semibold">Práctica no disponible para este nivel</p>
+        <p className="text-sm text-slate-300 font-semibold">{t("practiceUnavailable")}</p>
         <p className="text-xs text-slate-500 mt-1">
-          Puedes saltar directamente al Reto.
+          {t("skipToChallenge")}
         </p>
       </div>
     );
@@ -90,9 +98,9 @@ export function QuizRunner({
     return (
       <div className="text-center py-8">
         <Sparkles className="w-12 h-12 mx-auto mb-3" style={{ color }} />
-        <p className="text-lg font-bold text-slate-100">Reto completado</p>
+        <p className="text-lg font-bold text-slate-100">{t("challengeComplete")}</p>
         <p className="text-sm text-slate-400 mt-1">
-          {correctCount}/{questions.length} correctas · {mistakes} error{mistakes !== 1 ? "es" : ""}
+          {correctCount}/{questions.length} {t("correctPlural")} · {mistakes} {mistakes === 1 ? t("error") : t("errors")}
         </p>
       </div>
     );
@@ -114,10 +122,10 @@ export function QuizRunner({
       </div>
 
       <div className="flex items-center justify-between mb-3 text-xs text-slate-400">
-        <span>Pregunta {idx + 1} de {questions.length}</span>
+        <span>{t("question")} {idx + 1} {t("of")} {questions.length}</span>
         {q.difficulty && (
           <span className="px-2 py-0.5 rounded-full border border-slate-700 bg-slate-900">
-            {q.difficulty}
+            {difficultyLabels[q.difficulty]}
           </span>
         )}
       </div>
@@ -181,7 +189,7 @@ export function QuizRunner({
               )}
             >
               <span className="font-semibold">
-                {picked === q.correct ? "✓ Correcto. " : "✗ No exacto. "}
+                {picked === q.correct ? `${t("correctFeedback")} ` : `${t("wrongFeedback")} `}
               </span>
               {highlightGlossary(q.explain, `exp-${idx}`)}
             </motion.div>
@@ -189,7 +197,7 @@ export function QuizRunner({
 
           {showHint && picked === null && (
             <p className="mt-3 text-xs text-slate-500 italic">
-              Pista disponible: revisa la sección de teoría antes de responder.
+              {t("hint")}
             </p>
           )}
         </motion.div>

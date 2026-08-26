@@ -7,9 +7,9 @@ Juego educativo web para aprender inteligencia artificial desde cero mediante **
 ## Qué incluye
 
 - Ruta completa desde matemáticas y redes neuronales hasta LLM, RAG, agentes, MCP, seguridad y escalado.
-- 26 demos o minijuegos completos, progreso y sonido guardados localmente en el navegador.
+- 26 demos o minijuegos completos, música ambiental procedural, efectos y preferencias guardadas localmente.
 - 3 preguntas de práctica y al menos 5 preguntas de reto por nivel.
-- Diseño responsive en español, PWA instalable y soporte offline progresivo.
+- Diseño responsive, selector de interfaz español/inglés, PWA instalable y soporte offline progresivo. El contenido pedagógico principal está en español.
 - Metadatos sociales, datos estructurados, sitemap y robots listos para indexación.
 - API de estado con rate limiting en memoria o distribuido mediante Upstash.
 - Cabeceras de seguridad, Content Security Policy y recursos gráficos locales.
@@ -18,7 +18,7 @@ No hay cuentas ni base de datos: el progreso se conserva en `localStorage` del d
 
 ## Requisitos
 
-- Node.js 22 o posterior.
+- Node.js 24.x.
 - Bun 1.3.10 o una versión compatible.
 
 ## Desarrollo
@@ -41,6 +41,8 @@ bun run start
 ```
 
 La suite valida los 26 niveles, su orden, la integridad del contenido, los cuestionarios, los motores de juego, la persistencia, el rate limiter y los recursos de publicación. GitHub Actions ejecuta la misma comprobación en cada cambio; CodeQL y Dependabot vigilan el código y las dependencias.
+
+Los navegadores bloquean audio automático sin interacción: la música comienza después del primer toque o tecla y puede desactivarse desde el control **Música**.
 
 ## Variables de entorno
 

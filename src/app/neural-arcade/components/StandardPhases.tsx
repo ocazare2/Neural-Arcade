@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { BookOpen, GraduationCap, Award, Sparkles } from "lucide-react";
 import type { LevelMeta } from "../types";
 import { TheorySection, Formula, InfoBox, PaperRef, GlossaryInline, highlightGlossary } from "./ui";
+import { useLocale } from "../i18n";
 
 // ───────────────────────────────────────────────────────────
 // FASE: TEORÍA
@@ -11,6 +12,7 @@ import { TheorySection, Formula, InfoBox, PaperRef, GlossaryInline, highlightGlo
 // con fórmulas, glosario inline, y referencias.
 // ───────────────────────────────────────────────────────────
 export function TheoryPhase({ level }: { level: LevelMeta }) {
+  const { locale, t } = useLocale();
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-4">
@@ -40,10 +42,14 @@ export function TheoryPhase({ level }: { level: LevelMeta }) {
         </div>
       </div>
 
-      <InfoBox variant="info" title="Cómo leer este nivel">
-        Avanzamos de <b>Básico</b> a <b>Experto</b>. Lee los 4 bloques antes de pasar a la fase Demo.
-        Toca los términos <GlossaryInline term="azul" def="Los términos subrayados abren una definición emergente." />
-        para ver definiciones. Las fórmulas tienen un botón para expandir su explicación.
+      <InfoBox variant="info" title={t("howToRead")}>
+        {t("howToReadIntro")} {t("touchBlueTerms")} {" "}
+        <GlossaryInline
+          term={locale === "es" ? "azul" : "blue"}
+          def={locale === "es"
+            ? "Los términos subrayados abren una definición emergente."
+            : "Underlined terms open a definition that stays inside the screen."}
+        />
       </InfoBox>
 
       {/* Bloques de teoría */}
@@ -67,8 +73,8 @@ export function TheoryPhase({ level }: { level: LevelMeta }) {
       <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 overflow-hidden">
         <div className="px-4 py-2.5 border-b border-slate-700/50 flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-cyan-400" />
-          <h3 className="text-sm font-bold text-slate-100">Glosario del nivel</h3>
-          <span className="text-xs text-slate-500">({level.glossary.length} términos)</span>
+          <h3 className="text-sm font-bold text-slate-100">{t("levelGlossary")}</h3>
+          <span className="text-xs text-slate-500">({level.glossary.length} {t("terms")})</span>
         </div>
         <dl className="divide-y divide-slate-800">
           {level.glossary.map(t => (
@@ -94,6 +100,7 @@ export function TheoryPhase({ level }: { level: LevelMeta }) {
 // y un "dato pro" que conecta con la frontera actual.
 // ───────────────────────────────────────────────────────────
 export function MasteryPhase({ level }: { level: LevelMeta }) {
+  const { t } = useLocale();
   // La fórmula central es la del bloque Avanzado (índice 2) típicamente,
   // o la del Experto si es más representativa.
   const formulaBlock =
@@ -114,10 +121,10 @@ export function MasteryPhase({ level }: { level: LevelMeta }) {
       >
         <Award className="w-10 h-10 mx-auto mb-2" style={{ color: level.color }} />
         <h2 className="text-2xl font-extrabold tracking-wider" style={{ color: level.color }}>
-          MAESTRÍA
+          {t("mastery")}
         </h2>
         <p className="text-sm text-slate-300/80 mt-1">
-          Has dominado <b className="text-slate-100">{level.title}</b>. Aquí está la esencia.
+          {t("mastered")} <b className="text-slate-100">{level.title}</b>. {t("essence")}
         </p>
       </motion.div>
 
@@ -125,7 +132,7 @@ export function MasteryPhase({ level }: { level: LevelMeta }) {
         <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-bold text-slate-100">Fórmula central</h3>
+            <h3 className="text-sm font-bold text-slate-100">{t("centralFormula")}</h3>
           </div>
           <p className="text-xs text-slate-400 mb-2">{formulaBlock.title}</p>
           <Formula explain={formulaBlock.formulaExplain}>{formulaBlock.formula}</Formula>
@@ -138,17 +145,16 @@ export function MasteryPhase({ level }: { level: LevelMeta }) {
         </div>
       )}
 
-      <InfoBox variant="pro" title="Dato Pro · frontera actual">
+      <InfoBox variant="pro" title={t("proFact")}>
         {level.theory[level.theory.length - 1].body}
       </InfoBox>
 
       <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-start gap-3">
         <GraduationCap className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-emerald-300">¡Nivel dominado!</p>
+          <p className="text-sm font-semibold text-emerald-300">{t("levelMastered")}</p>
           <p className="text-xs text-slate-300/85 mt-1 leading-relaxed">
-            Vuelve al mapa para desbloquear el siguiente nivel. Puedes repetir el reto
-            cuando quieras para mejorar tus estrellas.
+            {t("levelMasteredBody")}
           </p>
         </div>
       </div>
