@@ -7,7 +7,7 @@ Juego educativo web para aprender inteligencia artificial desde cero mediante **
 ## Qué incluye
 
 - Ruta completa desde matemáticas y redes neuronales hasta LLM, RAG, agentes, MCP, seguridad y escalado.
-- 26 demos o minijuegos completos, música ambiental procedural, efectos y preferencias guardadas localmente.
+- 26 demos o minijuegos completos, música arcade procedural, efectos y preferencias guardadas localmente.
 - 3 preguntas de práctica y al menos 5 preguntas de reto por nivel.
 - Diseño responsive, selector de interfaz español/inglés, PWA instalable y soporte offline progresivo. El contenido pedagógico principal está en español.
 - Metadatos sociales, datos estructurados, sitemap y robots listos para indexación.

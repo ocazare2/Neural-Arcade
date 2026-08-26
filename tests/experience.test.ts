@@ -22,6 +22,11 @@ describe("audio", () => {
     const source = await Bun.file(join(root, "src/app/neural-arcade/lib/sound.ts")).text();
     expect(source).toContain("startBackgroundMusic");
     expect(source).toContain('"pointerdown"');
+    expect(source).toContain("ARCADE_TEMPO");
+    expect(source).toContain("ARCADE_MELODY");
+    expect(source).toContain('"square"');
+    expect(source).not.toContain("BACKGROUND_CHORDS");
+    expect(source).toContain("if (settings.muted || !settings.music) stopBackgroundMusic()");
   });
 });
 

@@ -17,23 +17,36 @@ interface AudioSnapshot extends AudioSettings {
 const SOUND_STORAGE_KEY = "neural-arcade-sound";
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = { muted: false, music: true };
 
-// A quiet, four-chord ambient loop. Keeping it procedural makes the PWA fully
-// offline and avoids shipping or licensing an audio asset.
-const BACKGROUND_CHORDS = [
-  [130.81, 164.81, 196.0],
-  [146.83, 174.61, 220.0],
-  [110.0, 130.81, 164.81],
-  [98.0, 123.47, 146.83],
+// "Neural Dash" is an original chip-style loop for the game: a driving bass,
+// square-wave arpeggios and a short lead melody. It stays procedural so the
+// PWA remains offline-first and ships no licensed audio asset.
+const ARCADE_TEMPO = 128;
+const ARCADE_STEP_SECONDS = 60 / ARCADE_TEMPO / 4;
+const ARCADE_SCHEDULER_INTERVAL_MS = 50;
+const ARCADE_LOOKAHEAD_SECONDS = 0.12;
+const ARCADE_MELODY = [
+  659.25, null, 783.99, null,
+  987.77, 783.99, 659.25, null,
+  698.46, null, 830.61, null,
+  1046.5, 830.61, 698.46, 587.33,
 ] as const;
+const ARCADE_CHORDS = [
+  [261.63, 311.13, 392.0],
+  [293.66, 349.23, 440.0],
+  [220.0, 261.63, 329.63],
+  [196.0, 233.08, 293.66],
+] as const;
+const ARCADE_BASS = [130.81, 146.83, 110.0, 98.0] as const;
 
 let audioCtx: AudioContext | null = null;
 let settings: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
 let settingsHydrated = false;
 let audioUnlocked = false;
 let musicMaster: GainNode | null = null;
-let musicVoices: OscillatorNode[] = [];
-let chordTimer: ReturnType<typeof setInterval> | null = null;
-let chordIndex = 0;
+let musicNotes = new Set<OscillatorNode>();
+let musicTimer: ReturnType<typeof setInterval> | null = null;
+let musicStep = 0;
+let nextMusicStepAt = 0;
 const subscribers = new Set<(snapshot: AudioSnapshot) => void>();
 
 export function normalizeAudioSettings(stored: string | null): AudioSettings {
@@ -59,7 +72,7 @@ export function normalizeAudioSettings(stored: string | null): AudioSettings {
 function snapshot(): AudioSnapshot {
   return {
     ...settings,
-    musicPlaying: musicVoices.length > 0 && !settings.muted && settings.music,
+    musicPlaying: musicMaster !== null && !settings.muted && settings.music,
   };
 }
 
@@ -166,54 +179,98 @@ export function playSound(type: SoundType, muted = false): void {
   });
 }
 
+function scheduleArcadeNote(
+  ctx: AudioContext,
+  destination: AudioNode,
+  frequency: number,
+  start: number,
+  duration: number,
+  type: OscillatorType,
+  gain: number,
+): void {
+  const oscillator = ctx.createOscillator();
+  const volume = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  volume.gain.setValueAtTime(0.0001, start);
+  volume.gain.linearRampToValueAtTime(gain, start + 0.008);
+  volume.gain.exponentialRampToValueAtTime(0.001, start + duration);
+  oscillator.connect(volume);
+  volume.connect(destination);
+  musicNotes.add(oscillator);
+  oscillator.addEventListener("ended", () => {
+    musicNotes.delete(oscillator);
+    oscillator.disconnect();
+    volume.disconnect();
+  });
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.03);
+}
+
+function scheduleArcadeStep(ctx: AudioContext, start: number): void {
+  const master = musicMaster;
+  if (!master) return;
+  const step = musicStep % ARCADE_MELODY.length;
+  const beat = Math.floor(step / 4) % ARCADE_CHORDS.length;
+  const chord = ARCADE_CHORDS[beat];
+  const arpeggio = chord[step % chord.length];
+  const melody = ARCADE_MELODY[step];
+
+  // A square-wave arpeggio is the recognizable 8-bit arcade texture.
+  scheduleArcadeNote(ctx, master, arpeggio * 2, start, 0.09, "square", 0.12);
+  if (melody) {
+    scheduleArcadeNote(ctx, master, melody, start, 0.18, "square", 0.18);
+  }
+  if (step % 4 === 0) {
+    scheduleArcadeNote(ctx, master, ARCADE_BASS[beat], start, 0.19, "triangle", 0.28);
+    scheduleArcadeNote(ctx, master, 74, start, 0.045, "sine", 0.2);
+  } else if (step % 2 === 0) {
+    scheduleArcadeNote(ctx, master, 1760, start, 0.025, "square", 0.035);
+  }
+  musicStep = (musicStep + 1) % ARCADE_MELODY.length;
+}
+
+function runArcadeScheduler(): void {
+  const ctx = audioCtx;
+  if (!ctx || !musicMaster || musicTimer === null) return;
+  const scheduleUntil = ctx.currentTime + ARCADE_LOOKAHEAD_SECONDS;
+  while (nextMusicStepAt < scheduleUntil) {
+    scheduleArcadeStep(ctx, nextMusicStepAt);
+    nextMusicStepAt += ARCADE_STEP_SECONDS;
+  }
+}
+
 async function startBackgroundMusic(): Promise<boolean> {
-  if (settings.muted || !settings.music || musicVoices.length > 0) {
-    return musicVoices.length > 0;
+  if (settings.muted || !settings.music || musicMaster) {
+    return musicMaster !== null;
   }
   const ctx = await getRunningCtx();
   if (!ctx || settings.muted || !settings.music) return false;
   // Two gesture listeners may resolve the same resume() concurrently.
-  if (musicVoices.length > 0) return true;
+  if (musicMaster) return true;
 
   const master = ctx.createGain();
   master.gain.setValueAtTime(0.0001, ctx.currentTime);
-  master.gain.exponentialRampToValueAtTime(0.028, ctx.currentTime + 0.8);
+  master.gain.exponentialRampToValueAtTime(0.038, ctx.currentTime + 0.25);
   master.connect(ctx.destination);
-
-  chordIndex = 0;
-  musicVoices = BACKGROUND_CHORDS[0].map((frequency, index) => {
-    const oscillator = ctx.createOscillator();
-    oscillator.type = index === 0 ? "sine" : "triangle";
-    oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
-    oscillator.connect(master);
-    oscillator.start();
-    return oscillator;
-  });
   musicMaster = master;
-
-  chordTimer = setInterval(() => {
-    if (!audioCtx || musicVoices.length === 0) return;
-    chordIndex = (chordIndex + 1) % BACKGROUND_CHORDS.length;
-    const nextChord = BACKGROUND_CHORDS[chordIndex];
-    musicVoices.forEach((voice, index) => {
-      voice.frequency.exponentialRampToValueAtTime(
-        nextChord[index],
-        audioCtx!.currentTime + 1.2,
-      );
-    });
-  }, 4400);
+  musicStep = 0;
+  nextMusicStepAt = ctx.currentTime + 0.04;
+  musicTimer = setInterval(runArcadeScheduler, ARCADE_SCHEDULER_INTERVAL_MS);
+  runArcadeScheduler();
   emit();
   return true;
 }
 
 function stopBackgroundMusic(): void {
-  if (chordTimer) clearInterval(chordTimer);
-  chordTimer = null;
-  const voices = musicVoices;
+  if (musicTimer) clearInterval(musicTimer);
+  musicTimer = null;
+  const notes = [...musicNotes];
   const master = musicMaster;
   const ctx = audioCtx;
-  musicVoices = [];
+  musicNotes = new Set();
   musicMaster = null;
+  nextMusicStepAt = 0;
 
   if (ctx && master) {
     const now = ctx.currentTime;
@@ -221,9 +278,8 @@ function stopBackgroundMusic(): void {
     master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), now);
     master.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
     window.setTimeout(() => {
-      for (const voice of voices) {
-        try { voice.stop(); } catch { /* already stopped */ }
-        voice.disconnect();
+      for (const note of notes) {
+        try { note.stop(); } catch { /* already stopped */ }
       }
       master.disconnect();
     }, 300);
