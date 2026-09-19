@@ -1,6 +1,6 @@
 # Neural Arcade
 
-Juego educativo web para aprender inteligencia artificial desde cero mediante **26 niveles interactivos**. Cada nivel recorre cinco fases: teoría, demo, práctica, reto y maestría.
+Juego educativo web para aprender inteligencia artificial desde cero mediante **26 niveles interactivos**. Matemáticas y Tokens empiezan con cuatro misiones jugables y un resumen de lo aprendido. Los niveles posteriores conservan las fases de teoría, demo, práctica, reto y maestría.
 
 ![Vista de Neural Arcade](public/og-image.png)
 
@@ -8,7 +8,9 @@ Juego educativo web para aprender inteligencia artificial desde cero mediante **
 
 - Ruta completa desde matemáticas y redes neuronales hasta LLM, RAG, agentes, MCP, seguridad y escalado.
 - 26 demos o minijuegos completos, música arcade procedural, efectos y preferencias guardadas localmente.
-- 3 preguntas de práctica y al menos 5 preguntas de reto por nivel.
+- Nivel 0: guía un robot, dibuja píxeles, carga su batería y rescátalo en un tablero. Aprende coordenadas, listas, tablas y sumas con ejemplos visibles.
+- Nivel 1: separa, construye y numera piezas de texto; envía un mensaje con espacio limitado. Aprende qué es un token antes de usarlo.
+- Los primeros dos niveles avanzan al resolver misiones, con explicaciones opcionales y sin perder estrellas por experimentar. Los niveles posteriores incluyen cuestionarios de práctica y reto.
 - Diseño responsive, selector de interfaz español/inglés, PWA instalable y soporte offline progresivo. El contenido pedagógico principal está en español.
 - Metadatos sociales, datos estructurados, sitemap y robots listos para indexación.
 - API de estado con rate limiting en memoria o distribuido mediante Upstash.

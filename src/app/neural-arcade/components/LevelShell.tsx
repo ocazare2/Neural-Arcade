@@ -24,11 +24,15 @@ export function LevelShell({
   level,
   currentPhase,
   onPhaseChange,
+  phaseLabels,
+  compact = false,
   children,
 }: {
   level: LevelMeta;
   currentPhase: Phase;
   onPhaseChange: (p: Phase) => void;
+  phaseLabels?: Partial<Record<Phase, string>>;
+  compact?: boolean;
   children: ReactNode;
 }) {
   const closeLevel = useArcade(s => s.closeLevel);
@@ -51,18 +55,18 @@ export function LevelShell({
     <div className="min-h-screen flex flex-col">
       {/* Header sticky */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur supports-[backdrop-filter]:bg-slate-950/60">
-        <div className="max-w-3xl mx-auto px-3 py-2.5 flex items-center gap-3">
+        <div className="max-w-3xl mx-auto px-3 py-2.5 flex items-center gap-2 sm:gap-3">
           <button
             onClick={closeLevel}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-slate-300 hover:bg-slate-800 transition"
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800 transition"
             aria-label={t("back")}
           >
             <Home className="w-4 h-4" />
           </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-lg" aria-hidden>{level.icon}</span>
-              <h1 className="text-sm font-bold tracking-wide" style={{ color: level.color }}>
+              <span className="hidden text-lg sm:inline" aria-hidden>{level.icon}</span>
+              <h1 className="break-words text-xs font-bold tracking-wide sm:text-sm" style={{ color: level.color }}>
                 {t("level")} {level.index + 1} · {level.title}
               </h1>
             </div>
@@ -87,8 +91,9 @@ export function LevelShell({
                   key={p.key}
                   onClick={() => accessible && onPhaseChange(p.key)}
                   disabled={!accessible}
+                  aria-current={active ? "step" : undefined}
                   className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-md transition flex-shrink-0",
+                    "flex min-h-11 items-center gap-1.5 px-2 py-1 rounded-md transition flex-shrink-0",
                     active && "bg-slate-800",
                     done && "hover:bg-slate-800 cursor-pointer",
                     !accessible && "opacity-40 cursor-not-allowed"
@@ -112,7 +117,7 @@ export function LevelShell({
                       active ? "text-slate-100" : done ? "text-slate-300" : "text-slate-500"
                     )}
                   >
-                    {t(p.labelKey)}
+                    {phaseLabels?.[p.key] ?? t(p.labelKey)}
                   </span>
                 </button>
               );
@@ -121,8 +126,7 @@ export function LevelShell({
         </div>
       </header>
 
-      {/* Content — pt-20 ensures sticky header never covers quiz buttons */}
-      <main className="flex-1 max-w-3xl w-full mx-auto px-3 pt-20 pb-6 sm:pt-24">
+      <main className={cn("flex-1 max-w-3xl w-full mx-auto px-3 pb-6", compact ? "pt-5 sm:pt-8" : "pt-20 sm:pt-24")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentPhase}

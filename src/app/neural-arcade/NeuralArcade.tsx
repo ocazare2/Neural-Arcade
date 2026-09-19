@@ -67,6 +67,9 @@ const MathPlaygroundGame = lazy(() =>
 const ModernConceptGame = lazy(() =>
   import("./components/ModernConceptGame").then(m => ({ default: m.ModernConceptGame })),
 );
+const BeginnerLevel = lazy(() =>
+  import("./components/BeginnerLevel").then(m => ({ default: m.BeginnerLevel })),
+);
 
 // Loading fallback shown while a mini-game chunk is being fetched.
 function GameLoader() {
@@ -141,6 +144,9 @@ function NeuralArcadeContent() {
     const level = ALL_LEVELS.find(l => l.id === activeLevel);
     if (!level) {
       return <ErrorBoundary><HomeView /></ErrorBoundary>;
+    }
+    if (level.id === "math" || level.id === "tokens") {
+      return <ErrorBoundary><Suspense fallback={<GameLoader />}><BeginnerLevel key={level.id} level={level} /></Suspense></ErrorBoundary>;
     }
     return <ErrorBoundary><LevelView key={level.id} level={level} /></ErrorBoundary>;
   }
@@ -269,6 +275,7 @@ function HomeView() {
         </div>
 
         {/* Stats bar */}
+        <p className="mb-5 text-center text-sm text-slate-300">{t("beginnerInvitation")}</p>
         <div className="flex items-center justify-center gap-4 sm:gap-6 mb-6">
           <Stat icon={<Star className="w-4 h-4" />} value={`${totalStars}/${ALL_LEVELS.length * 3}`} label={t("stars")} color="#fde047" />
           <Stat icon={<Zap className="w-4 h-4" />} value={xp} label={t("xp")} color="#22d3ee" />
@@ -348,6 +355,9 @@ function HomeView() {
                           </h3>
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{lv.tag}</p>
+                        {(lv.id === "math" || lv.id === "tokens") && (
+                          <p className="mt-2 text-[11px] font-semibold text-cyan-300">{t("beginnerMissions")}</p>
+                        )}
                         {stars > 0 && (
                           <div className="flex gap-0.5 mt-1">
                             {[0, 1, 2].map(s => (
