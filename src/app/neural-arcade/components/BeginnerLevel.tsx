@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { BookOpen, CheckCircle2, Gamepad2, Trophy } from "lucide-react";
-import { ALL_LEVELS } from "../curriculum";
+import { getNextLevel } from "../curriculum";
 import { useLocale } from "../i18n";
 import { playSound } from "../lib/sound";
 import { useArcade } from "../store";
@@ -34,6 +34,11 @@ export function BeginnerLevel({ level }: { level: LevelMeta }) {
   const labels = LABELS[locale][isMath ? "math" : "tokens"];
   const mission = MISSION_PHASES.indexOf(activePhase);
   const spanish = locale === "es";
+  const storedDone = progress[level.id]?.phasesDone ?? [];
+  // A partial session can safely resume at its already-finished mission after
+  // a refresh. A fully mastered level starts a real replay instead, so it
+  // cannot be skipped straight to the recap.
+  const phaseReady = readyPhase === activePhase || (!storedDone.includes("mastery") && storedDone.includes(activePhase));
   const phaseLabels = Object.fromEntries([
     ...MISSION_PHASES.map((phase, index) => [phase, labels[index]]),
     ["mastery", spanish ? "Logros" : "Recap"],
@@ -53,7 +58,7 @@ export function BeginnerLevel({ level }: { level: LevelMeta }) {
   };
 
   const nextMission = () => {
-    if (readyPhase !== activePhase || mission < 0) return;
+    if (!phaseReady || mission < 0) return;
     changePhase(MISSION_PHASES[mission + 1] ?? "mastery");
   };
 
@@ -72,7 +77,7 @@ export function BeginnerLevel({ level }: { level: LevelMeta }) {
             level={level}
             onRetry={() => { setFinished(false); changePhase("theory"); }}
             onNextLevel={() => {
-              const next = ALL_LEVELS.find(candidate => candidate.index === level.index + 1);
+              const next = getNextLevel(level.id);
               if (next) openLevel(next.id);
               else closeLevel();
             }}
@@ -119,7 +124,7 @@ export function BeginnerLevel({ level }: { level: LevelMeta }) {
             {isMath
               ? <MathMission key={activePhase} mission={mission} onComplete={finishMission} />
               : <TokenMission key={activePhase} mission={mission} onComplete={finishMission} />}
-            {readyPhase === activePhase && (
+            {phaseReady && (
               <NextPhaseButton
                 currentPhase={activePhase}
                 onNext={nextMission}

@@ -1,74 +1,32 @@
 "use client";
 
 import { useState, useEffect, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Star, Zap, Lock, Trophy, ChevronRight, RotateCcw, Sparkles, BookOpen, Play, Heart } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Star, Zap, Lock, Trophy, ChevronRight, RotateCcw, Play, Heart, Route, CheckCircle2 } from "lucide-react";
 import { useArcade } from "./store";
-import { LevelShell, NextPhaseButton, LevelComplete } from "./components/LevelShell";
-import { TheoryPhase, MasteryPhase } from "./components/StandardPhases";
-import { QuizRunner } from "./components/QuizRunner";
-import { PRACTICE_QUESTIONS, CHALLENGE_QUESTIONS } from "./quizzes";
 import { Mascot, pickPhrase } from "./components/Mascot";
 import { Onboarding, hasBeenOnboarded } from "./components/Onboarding";
 import { PulseButton } from "./components/Polish";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ExperienceControls } from "./components/ExperienceControls";
-import type { Phase, LevelMeta } from "./types";
-import { ALL_LEVELS } from "./curriculum";
+import {
+  ALL_LEVELS,
+  CURRICULUM_CHAPTERS,
+  CURRICULUM_LEVEL_ORDER,
+  getLevelPosition,
+  getPreviousLevel,
+} from "./curriculum";
 import { LocaleProvider, useLocale } from "./i18n";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
+import { getMissionProgress, isLevelComplete, isLevelUnlocked } from "./learning-progress";
+import { MISSION_PLANS } from "./mission-plans";
 
-// ─────────────────────────────────────────────────────────────
-// Code-splitting: each mini-game is loaded lazily ONLY when the
-// user reaches the "demo" phase of the corresponding level.
-// On the home screen (level map), none of these chunks are fetched,
-// keeping the initial bundle small.
-// ─────────────────────────────────────────────────────────────
-const TokenSurgeonGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.TokenSurgeonGame })),
-);
-const AttentionConnectGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.AttentionConnectGame })),
-);
-const GradientRollerGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.GradientRollerGame })),
-);
-const EmbeddingSpaceGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.EmbeddingSpaceGame })),
-);
-const NeuronBuilderGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.NeuronBuilderGame })),
-);
-const BackpropTracerGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.BackpropTracerGame })),
-);
-const TransformerStackGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.TransformerStackGame })),
-);
-const TokenGeneratorGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.TokenGeneratorGame })),
-);
-const AlignmentSorterGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.AlignmentSorterGame })),
-);
-const RagHunterGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.RagHunterGame })),
-);
-const AgentLoopGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.AgentLoopGame })),
-);
-const OrchestratorGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.OrchestratorGame })),
-);
-const MathPlaygroundGame = lazy(() =>
-  import("./components/MiniGames").then(m => ({ default: m.MathPlaygroundGame })),
-);
-const ModernConceptGame = lazy(() =>
-  import("./components/ModernConceptGame").then(m => ({ default: m.ModernConceptGame })),
-);
 const BeginnerLevel = lazy(() =>
   import("./components/BeginnerLevel").then(m => ({ default: m.BeginnerLevel })),
+);
+const MissionLevel = lazy(() =>
+  import("./components/MissionLevel").then(m => ({ default: m.MissionLevel })),
 );
 
 // Loading fallback shown while a mini-game chunk is being fetched.
@@ -82,37 +40,6 @@ function GameLoader() {
   );
 }
 
-const DEMOS: Record<string, React.ComponentType<{ color: string; levelId?: string }>> = {
-  math: MathPlaygroundGame,
-  tokens: TokenSurgeonGame,
-  embed: EmbeddingSpaceGame,
-  neuron: NeuronBuilderGame,
-  backprop: BackpropTracerGame,
-  grad: GradientRollerGame,
-  attn: AttentionConnectGame,
-  trans: TransformerStackGame,
-  gen: TokenGeneratorGame,
-  align: AlignmentSorterGame,
-  rag: RagHunterGame,
-  agent: AgentLoopGame,
-  orch: OrchestratorGame,
-  posttraining: ModernConceptGame,
-  inference: ModernConceptGame,
-  multimodal: ModernConceptGame,
-  context: ModernConceptGame,
-  memory: ModernConceptGame,
-  tools: ModernConceptGame,
-  reasoning: ModernConceptGame,
-  skills: ModernConceptGame,
-  mcp: ModernConceptGame,
-  safety: ModernConceptGame,
-  hardware: ModernConceptGame,
-  scaling: ModernConceptGame,
-  modern: ModernConceptGame,
-};
-
-const PHASE_ORDER: Phase[] = ["theory", "demo", "practice", "challenge", "mastery"];
-
 export default function NeuralArcade() {
   return (
     <LocaleProvider>
@@ -123,11 +50,12 @@ export default function NeuralArcade() {
 
 function NeuralArcadeContent() {
   const { activeLevel, activePhase, closeLevel } = useArcade();
+  const shouldReduceMotion = useReducedMotion();
 
   // Scroll to top on phase change
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activePhase, activeLevel]);
+    window.scrollTo({ top: 0, behavior: shouldReduceMotion ? "auto" : "smooth" });
+  }, [activePhase, activeLevel, shouldReduceMotion]);
 
   // Defensive: if the stored activeLevel ID no longer exists in ALL_LEVELS
   // (state corruption / version bump / deleted level), close it and return home.
@@ -148,7 +76,9 @@ function NeuralArcadeContent() {
     if (level.id === "math" || level.id === "tokens") {
       return <ErrorBoundary><Suspense fallback={<GameLoader />}><BeginnerLevel key={level.id} level={level} /></Suspense></ErrorBoundary>;
     }
-    return <ErrorBoundary><LevelView key={level.id} level={level} /></ErrorBoundary>;
+    const plan = MISSION_PLANS[level.id];
+    if (!plan) return <ErrorBoundary><HomeView /></ErrorBoundary>;
+    return <ErrorBoundary><Suspense fallback={<GameLoader />}><MissionLevel key={level.id} level={level} plan={plan} /></Suspense></ErrorBoundary>;
   }
 
   return <ErrorBoundary><HomeView /></ErrorBoundary>;
@@ -159,14 +89,14 @@ function NeuralArcadeContent() {
 // ═══════════════════════════════════════════════════════════
 function HomeView() {
   const { progress, xp, openLevel, reset } = useArcade();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [mounted, setMounted] = useState(false);
   const homeIsInert = showOnboarding || showResetConfirm;
   const totalStars = ALL_LEVELS.reduce((sum, level) => sum + (progress[level.id]?.stars ?? 0), 0);
-  const completedCount = ALL_LEVELS.filter(level => progress[level.id]?.phasesDone?.includes("challenge")).length;
-  const allDone = ALL_LEVELS.every(level => progress[level.id]?.phasesDone?.includes("challenge"));
+  const completedCount = ALL_LEVELS.filter(level => isLevelComplete(progress, level.id)).length;
+  const allDone = ALL_LEVELS.every(level => isLevelComplete(progress, level.id));
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount hydration for SSR-safe localStorage check
@@ -175,16 +105,11 @@ function HomeView() {
   }, []);
 
   // Find first playable level (unlocked but not completed)
-  const firstPlayableIdx = ALL_LEVELS.findIndex(l => {
-    const i = ALL_LEVELS.indexOf(l);
-    const unlocked = i === 0 || progress[ALL_LEVELS[i - 1].id]?.phasesDone?.includes("challenge");
-    const done = progress[l.id]?.phasesDone?.includes("challenge");
-    return unlocked && !done;
-  });
+  const firstPlayableIdx = ALL_LEVELS.findIndex((level, position) =>
+    isLevelUnlocked(progress, CURRICULUM_LEVEL_ORDER, position) && !isLevelComplete(progress, level.id),
+  );
   const playLevelId = firstPlayableIdx >= 0 ? ALL_LEVELS[firstPlayableIdx].id : ALL_LEVELS[0].id;
-  const playLabel = firstPlayableIdx <= 0 ? t("play") : t("continue");
-
-  const isUnlocked = (i: number) => i === 0 || progress[ALL_LEVELS[i - 1].id]?.phasesDone?.includes("challenge");
+  const playLabel = allDone ? t("replayJourney") : firstPlayableIdx <= 0 ? t("play") : t("continue");
 
   const handleResetDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
@@ -296,90 +221,156 @@ function HomeView() {
           </motion.div>
         )}
 
-        {/* Path of levels */}
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-4 sm:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-cyan-500/30 via-fuchsia-500/30 to-amber-500/30" />
+        {/* Ruta pedagógica agrupada por capítulos */}
+        <div className="space-y-10">
+          {CURRICULUM_CHAPTERS.map((chapter, chapterIndex) => {
+            const chapterLevels = chapter.levelIds
+              .map((levelId) => ALL_LEVELS.find((level) => level.id === levelId))
+              .filter((level): level is (typeof ALL_LEVELS)[number] => Boolean(level));
+            const chapterCompleted = chapterLevels.filter((level) => isLevelComplete(progress, level.id)).length;
 
-          <div className="space-y-3">
-            {ALL_LEVELS.map((lv, i) => {
-              const unlocked = isUnlocked(i);
-              const stars = progress[lv.id]?.stars ?? 0;
-              const done = progress[lv.id]?.phasesDone?.includes("challenge");
-              const left = i % 2 === 0;
-
-              return (
-                <motion.div
-                  key={lv.id}
-                  initial={{ opacity: 0, x: left ? -20 : 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className={cn(
-                    "relative pl-10 sm:pl-0",
-                    left ? "sm:pr-1/2" : "sm:pl-1/2"
-                  )}
-                >
-                  {/* Node on the line */}
-                  <div
-                    className={cn(
-                      "absolute top-4 w-3 h-3 rounded-full border-2 -translate-x-1/2 sm:left-1/2 left-4",
-                      done ? "bg-emerald-400 border-emerald-300" : unlocked ? "bg-cyan-400 border-cyan-300 animate-pulse" : "bg-slate-800 border-slate-700"
-                    )}
-                  />
-
-                  <button
-                    onClick={() => unlocked && openLevel(lv.id)}
-                    disabled={!unlocked}
-                    className={cn(
-                      "w-full sm:w-[calc(50%-1.5rem)] rounded-2xl border-2 p-4 text-left transition-all",
-                      left ? "sm:mr-auto" : "sm:ml-auto",
-                      unlocked
-                        ? "hover:scale-[1.02] cursor-pointer"
-                        : "opacity-40 cursor-not-allowed",
-                    )}
-                    style={{
-                      borderColor: unlocked ? lv.color : "#334155",
-                      background: done
-                        ? `linear-gradient(135deg, ${lv.color}22, transparent)`
-                        : "rgba(15, 23, 42, 0.6)",
-                      boxShadow: unlocked && !done ? `0 0 24px ${lv.color}33` : "none",
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl flex-shrink-0">{unlocked ? lv.icon : <Lock className="w-6 h-6 text-slate-600" />}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-slate-500 font-mono">N{lv.index + 1}</span>
-                          <h3 className="text-sm font-extrabold tracking-wide" style={{ color: unlocked ? lv.color : "#64748b" }}>
-                            {lv.title}
-                          </h3>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{lv.tag}</p>
-                        {(lv.id === "math" || lv.id === "tokens") && (
-                          <p className="mt-2 text-[11px] font-semibold text-cyan-300">{t("beginnerMissions")}</p>
-                        )}
-                        {stars > 0 && (
-                          <div className="flex gap-0.5 mt-1">
-                            {[0, 1, 2].map(s => (
-                              <Star key={s} className={cn("w-3 h-3", s < stars ? "fill-amber-400 text-amber-400" : "text-slate-700")} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {unlocked && !done && <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: lv.color }} />}
-                      {done && <span className="text-emerald-400 text-xl">✓</span>}
+            return (
+              <section key={chapter.id} aria-labelledby={`chapter-${chapter.id}`}>
+                <div className="mb-4 rounded-2xl border border-slate-700/70 bg-slate-900/75 p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-400/10 text-cyan-300">
+                      <Route className="h-5 w-5" aria-hidden />
                     </div>
-                  </button>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400">
+                          {locale === "es" ? `Capítulo ${chapterIndex + 1}` : `Chapter ${chapterIndex + 1}`}
+                        </p>
+                        <span className="font-mono text-[11px] text-slate-400">
+                          {chapterCompleted}/{chapterLevels.length}
+                        </span>
+                      </div>
+                      <h2 id={`chapter-${chapter.id}`} className="mt-1 text-lg font-extrabold text-slate-100">
+                        {chapter.title[locale]}
+                      </h2>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-300">{chapter.goal[locale]}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800" aria-hidden>
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-400 transition-all"
+                      style={{ width: `${(chapterCompleted / chapterLevels.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
 
+                <ol className="relative ml-3 space-y-3 border-l border-slate-700/80">
+                  {chapterLevels.map((lv) => {
+                    const position = getLevelPosition(lv.id);
+                    const unlocked = isLevelUnlocked(progress, CURRICULUM_LEVEL_ORDER, position);
+                    const done = isLevelComplete(progress, lv.id);
+                    const missionProgress = getMissionProgress(progress, lv.id);
+                    const previous = getPreviousLevel(lv.id);
+                    const current = position === firstPlayableIdx;
+                    const lockDescriptionId = `lock-${lv.id}`;
+
+                    return (
+                      <motion.li
+                        key={lv.id}
+                        initial={{ opacity: 0, x: -12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: Math.min(position * 0.025, 0.35) }}
+                        className="relative pl-6"
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "absolute -left-1.5 top-5 h-3 w-3 rounded-full border-2",
+                            done
+                              ? "border-emerald-300 bg-emerald-400"
+                              : current
+                                ? "animate-pulse border-cyan-200 bg-cyan-400"
+                                : unlocked
+                                  ? "border-slate-400 bg-slate-700"
+                                  : "border-slate-700 bg-slate-900",
+                          )}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => unlocked && openLevel(lv.id)}
+                          aria-disabled={!unlocked}
+                          aria-describedby={!unlocked ? lockDescriptionId : undefined}
+                          className={cn(
+                            "w-full rounded-2xl border-2 p-4 text-left transition",
+                            unlocked
+                              ? "cursor-pointer hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+                              : "cursor-not-allowed border-slate-800 bg-slate-950/50 opacity-60",
+                          )}
+                          style={unlocked ? {
+                            borderColor: done ? `${lv.color}88` : lv.color,
+                            background: done
+                              ? `linear-gradient(135deg, ${lv.color}1f, rgba(15,23,42,.72))`
+                              : "rgba(15, 23, 42, 0.72)",
+                            boxShadow: current ? `0 0 24px ${lv.color}2f` : "none",
+                          } : undefined}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="mt-0.5 text-3xl" aria-hidden>
+                              {unlocked ? lv.icon : <Lock className="h-6 w-6 text-slate-600" />}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-[10px] text-slate-500">N{lv.index + 1}</span>
+                                <h3 className="break-words text-sm font-extrabold tracking-wide" style={{ color: unlocked ? lv.color : "#64748b" }}>
+                                  {lv.title}
+                                </h3>
+                                {current && !done && (
+                                  <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[9px] font-extrabold tracking-wider text-cyan-300">
+                                    {locale === "es" ? "SIGUIENTE" : "NEXT"}
+                                  </span>
+                                )}
+                                {done && (
+                                  <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[9px] font-extrabold tracking-wider text-emerald-300">
+                                    {locale === "es" ? "COMPLETADO" : "COMPLETE"}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 text-xs leading-relaxed text-slate-400">{lv.summary}</p>
+                              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                <span className="font-semibold text-cyan-300">
+                                  {missionProgress.completed}/4 {locale === "es" ? "misiones" : "missions"}
+                                </span>
+                                <span className="text-slate-500">~{lv.estimatedMin} {t("minute")}</span>
+                                {unlocked && <span className="text-slate-500">{lv.concepts.length} {locale === "es" ? "conceptos" : "concepts"}</span>}
+                              </div>
+                              {!unlocked && previous && (
+                                <p id={lockDescriptionId} className="mt-2 text-[11px] font-semibold text-amber-300/80">
+                                  {locale === "es" ? `Completa ${previous.title} para desbloquear` : `Complete ${previous.title} to unlock`}
+                                </p>
+                              )}
+                              {progress[lv.id]?.stars ? (
+                                <div className="mt-2 flex gap-0.5" aria-label={`${progress[lv.id].stars} ${t("stars")}`}>
+                                  {[0, 1, 2].map((star) => (
+                                    <Star key={star} className={cn("h-3 w-3", star < progress[lv.id].stars ? "fill-amber-400 text-amber-400" : "text-slate-700")} />
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                            {unlocked && !done && <ChevronRight className="mt-1 h-4 w-4 shrink-0" style={{ color: lv.color }} aria-hidden />}
+                            {done && <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-400" aria-hidden />}
+                          </div>
+                        </button>
+                      </motion.li>
+                    );
+                  })}
+                </ol>
+
+                <p className="ml-9 mt-4 rounded-xl border border-violet-400/15 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200/80">
+                  {chapter.bridge[locale]}
+                </p>
+              </section>
+            );
+          })}
+        </div>
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t border-slate-800 text-center space-y-4">
           <p className="text-xs text-slate-500">
-            Neural Arcade v{APP_VERSION} · {ALL_LEVELS.length} {t("levels")} · {ALL_LEVELS.reduce((s, l) => s + l.theory.length, 0)} {t("theoryBlocks")} · 26 {t("demos")} · {t("interactiveGlossary")}
+            Neural Arcade v{APP_VERSION} · {ALL_LEVELS.length} {t("levels")} · {ALL_LEVELS.length * 4} {locale === "es" ? "misiones jugables" : "playable missions"} · {ALL_LEVELS.reduce((sum, level) => sum + level.concepts.length, 0)} {locale === "es" ? "conceptos explicados" : "concepts explained"}
           </p>
 
           {/* Made with */}
@@ -455,172 +446,6 @@ function Stat({ icon, value, label, color }: { icon: React.ReactNode; value: Rea
         <span className="font-mono font-bold text-base sm:text-lg">{value}</span>
       </div>
       <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// LEVEL VIEW — maneja las 5 fases
-// ═══════════════════════════════════════════════════════════
-function LevelView({ level }: { level: LevelMeta }) {
-  const { activePhase, setPhase, completePhase, closeLevel, openLevel, progress } = useArcade();
-  const { t } = useLocale();
-  const [challengeStars, setChallengeStars] = useState<number | null>(null);
-  const [showComplete, setShowComplete] = useState(false);
-
-  const DemoComponent = DEMOS[level.id];
-  const practiceQs = PRACTICE_QUESTIONS[level.id] ?? [];
-  const challengeQs = CHALLENGE_QUESTIONS[level.id] ?? [];
-
-  const handleNext = () => {
-    const idx = PHASE_ORDER.indexOf(activePhase);
-    completePhase(level.id, activePhase);
-    if (idx < PHASE_ORDER.length - 1) {
-      setPhase(PHASE_ORDER[idx + 1]);
-    } else {
-      setShowComplete(true);
-    }
-  };
-
-  // Wrap setPhase so that navigating BACK to the challenge phase (via the
-  // stepper) clears the previously-earned stars. Without this, the
-  // "CONTINUAR A MAESTRÍA" button would still be visible and the user could
-  // skip re-taking the quiz. The QuizRunner remounts on phase change
-  // (keyed by currentPhase in LevelShell), so its internal state is already
-  // fresh — we just need to clear the parent's cached stars.
-  const handlePhaseChange = (p: Phase) => {
-    if (p === "challenge" && activePhase !== "challenge") {
-      setChallengeStars(null);
-    }
-    setPhase(p);
-  };
-
-  if (showComplete) {
-    // Detect if this is the final level (no level with a higher index exists).
-    const nextIdx = level.index + 1;
-    const hasNextLevel = nextIdx < 0
-      ? true // MATH_LEVEL (index=-1) always has tokens (index=0) next
-      : ALL_LEVELS.some(l => l.index === nextIdx);
-    // Show the BEST stars earned (persisted max from store), not just the
-    // most-recent attempt. Otherwise a user who got 3★, retried, and got 1★
-    // would see 1★ on this screen while the home screen correctly shows 3★.
-    const bestStars = Math.max(challengeStars ?? 1, progress[level.id]?.stars ?? 0);
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 text-slate-100">
-        <div className="max-w-3xl mx-auto px-3 py-6">
-          <LevelComplete
-            stars={bestStars}
-            level={level}
-            isLastLevel={!hasNextLevel}
-            onRetry={() => {
-              setShowComplete(false);
-              setPhase("challenge");
-              setChallengeStars(null);
-            }}
-            onNextLevel={() => {
-              const actualIdx = nextIdx < 0 ? 0 : ALL_LEVELS.findIndex(l => l.index === nextIdx);
-              if (actualIdx >= 0 && actualIdx < ALL_LEVELS.length) {
-                closeLevel();
-                openLevel(ALL_LEVELS[actualIdx].id);
-              } else {
-                closeLevel();
-              }
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 text-slate-100">
-      <LevelShell
-        level={level}
-        currentPhase={activePhase}
-        onPhaseChange={handlePhaseChange}
-      >
-        {activePhase === "theory" && (
-          <div>
-            <TheoryPhase level={level} />
-            <NextPhaseButton currentPhase="theory" onNext={handleNext} color={level.color} />
-          </div>
-        )}
-
-        {activePhase === "demo" && (
-          <div>
-            {DemoComponent ? (
-              <Suspense fallback={<GameLoader />}>
-                <DemoComponent color={level.color} levelId={level.id} />
-              </Suspense>
-            ) : (
-              <div role="status" className="rounded-xl border border-rose-500/40 bg-rose-950/20 p-6 text-center">
-                <p className="text-sm text-rose-200 font-semibold mb-1">{t("demoLoadError")}</p>
-                <p className="text-xs text-slate-400">{t("reloadToRetry")}</p>
-              </div>
-            )}
-            <NextPhaseButton currentPhase="demo" onNext={handleNext} color={level.color} />
-          </div>
-        )}
-
-        {activePhase === "practice" && (
-          <div>
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-3 mb-4 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-              <p className="text-xs text-slate-300">
-                {t("practiceIntro")}
-              </p>
-            </div>
-            <QuizRunner
-              questions={practiceQs}
-              color={level.color}
-              showHint
-              // Practice doesn't award stars or affect progression — it's a
-              // warm-up. We deliberately ignore the (stars, correct, total)
-              // callback. The handleNext below marks the phase as done.
-            />
-            <NextPhaseButton currentPhase="practice" onNext={handleNext} color={level.color} label={t("continueChallenge")} />
-          </div>
-        )}
-
-        {activePhase === "challenge" && (
-          <div>
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <p className="text-xs text-slate-300">
-                {t("finalChallenge")} · {challengeQs.length} {t("questions")} · {t("noHints")} · {t("scoreDetermines")}.
-              </p>
-            </div>
-            <QuizRunner
-              questions={challengeQs}
-              color={level.color}
-              onComplete={(stars) => {
-                setChallengeStars(stars);
-                completePhase(level.id, "challenge", stars);
-              }}
-            />
-            {challengeStars !== null && (
-              <NextPhaseButton
-                currentPhase="challenge"
-                onNext={handleNext}
-                color={level.color}
-                label={t("continueMastery")}
-              />
-            )}
-          </div>
-        )}
-
-        {activePhase === "mastery" && (
-          <div>
-            <MasteryPhase level={level} />
-            <NextPhaseButton
-              currentPhase="mastery"
-              onNext={handleNext}
-              color={level.color}
-              label={t("completeLevel")}
-            />
-          </div>
-        )}
-      </LevelShell>
     </div>
   );
 }

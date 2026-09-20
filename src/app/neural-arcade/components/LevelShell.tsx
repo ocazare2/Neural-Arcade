@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Star, RotateCcw, Home, GraduationCap } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { LevelMeta, Phase } from "../types";
 import { useArcade } from "../store";
@@ -41,6 +41,8 @@ export function LevelShell({
   // read and can trigger React's maximum-update-depth protection.
   const storedPhases = useArcade(s => s.progress[level.id]?.phasesDone);
   const completedPhases = storedPhases ?? EMPTY_PHASES;
+  const activeStepRef = useRef<HTMLButtonElement>(null);
+  const shouldReduceMotion = useReducedMotion();
   const phaseIdx = PHASES.findIndex(p => p.key === currentPhase);
   const highestCompletedIdx = PHASES.reduce(
     (highest, phase, index) => completedPhases.includes(phase.key) ? Math.max(highest, index) : highest,
@@ -50,6 +52,10 @@ export function LevelShell({
     phaseIdx,
     Math.min(PHASES.length - 1, highestCompletedIdx + 1),
   );
+
+  useEffect(() => {
+    activeStepRef.current?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "nearest", inline: "center" });
+  }, [currentPhase, shouldReduceMotion]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -80,7 +86,7 @@ export function LevelShell({
         </div>
 
         {/* Phase stepper */}
-        <div className="max-w-3xl mx-auto px-3 pb-2.5">
+        <nav className="max-w-3xl mx-auto px-3 pb-2.5" aria-label={t("missionProgress")}>
           <div className="flex items-center gap-1 overflow-x-auto">
             {PHASES.map((p, i) => {
               const done = completedPhases.includes(p.key);
@@ -89,6 +95,7 @@ export function LevelShell({
               return (
                 <button
                   key={p.key}
+                  ref={active ? activeStepRef : undefined}
                   onClick={() => accessible && onPhaseChange(p.key)}
                   disabled={!accessible}
                   aria-current={active ? "step" : undefined}
@@ -123,7 +130,7 @@ export function LevelShell({
               );
             })}
           </div>
-        </div>
+        </nav>
       </header>
 
       <main className={cn("flex-1 max-w-3xl w-full mx-auto px-3 pb-6", compact ? "pt-5 sm:pt-8" : "pt-20 sm:pt-24")}>

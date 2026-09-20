@@ -1,16 +1,16 @@
 # Neural Arcade
 
-Juego educativo web para aprender inteligencia artificial desde cero mediante **26 niveles interactivos**. Matemáticas y Tokens empiezan con cuatro misiones jugables y un resumen de lo aprendido. Los niveles posteriores conservan las fases de teoría, demo, práctica, reto y maestría.
+Juego educativo web para aprender inteligencia artificial desde cero mediante **26 niveles y 104 misiones jugables**. Todo el recorrido sigue una secuencia por dependencias: cada nivel explica sus conceptos al manipularlos, conectarlos, clasificarlos y construir con ellos.
 
 ![Vista de Neural Arcade](public/og-image.png)
 
 ## Qué incluye
 
-- Ruta completa desde matemáticas y redes neuronales hasta LLM, RAG, agentes, MCP, seguridad y escalado.
-- 26 demos o minijuegos completos, música arcade procedural, efectos y preferencias guardadas localmente.
+- Cinco capítulos conectados: fundamentos, aprendizaje neuronal, motor LLM, modelo a producto y del chat al agente.
+- 104 misiones con objetivos comprobables, música arcade procedural, efectos y preferencias guardadas localmente.
 - Nivel 0: guía un robot, dibuja píxeles, carga su batería y rescátalo en un tablero. Aprende coordenadas, listas, tablas y sumas con ejemplos visibles.
 - Nivel 1: separa, construye y numera piezas de texto; envía un mensaje con espacio limitado. Aprende qué es un token antes de usarlo.
-- Los primeros dos niveles avanzan al resolver misiones, con explicaciones opcionales y sin perder estrellas por experimentar. Los niveles posteriores incluyen cuestionarios de práctica y reto.
+- Los 26 niveles avanzan al resolver misiones, con explicaciones opcionales y sin bloquear el aprendizaje por equivocarse. El reto final pide montar una solución bajo un presupuesto.
 - Diseño responsive, selector de interfaz español/inglés, PWA instalable y soporte offline progresivo. El contenido pedagógico principal está en español.
 - Metadatos sociales, datos estructurados, sitemap y robots listos para indexación.
 - API de estado con rate limiting en memoria o distribuido mediante Upstash.
@@ -42,7 +42,7 @@ bun run check
 bun run start
 ```
 
-La suite valida los 26 niveles, su orden, la integridad del contenido, los cuestionarios, los motores de juego, la persistencia, el rate limiter y los recursos de publicación. GitHub Actions ejecuta la misma comprobación en cada cambio; CodeQL y Dependabot vigilan el código y las dependencias.
+La suite valida los 26 niveles, su orden, la cobertura de cada concepto, la viabilidad de las 104 misiones, la persistencia, el rate limiter y los recursos de publicación. GitHub Actions ejecuta la misma comprobación en cada cambio; CodeQL y Dependabot vigilan el código y las dependencias.
 
 Los navegadores bloquean audio automático sin interacción: la música comienza después del primer toque o tecla y puede desactivarse desde el control **Música**.
 
@@ -81,9 +81,9 @@ src/app/
 │   ├── data.ts                  # Currículo base
 │   ├── extra-levels.ts          # Módulos avanzados
 │   ├── math-primer.ts           # Fundamentos matemáticos
-│   ├── quizzes.ts               # Banco principal
-│   ├── supplemental-quizzes.ts  # Cobertura avanzada
-│   └── components/              # UI, demos y fases
+│   ├── mission-plans-*.ts       # Contenido jugable por nivel
+│   ├── mission-types.ts         # Contratos de las cuatro mecánicas
+│   └── components/              # UI y motores de misiones
 ├── robots.ts
 └── sitemap.ts
 tests/                           # Pruebas Bun

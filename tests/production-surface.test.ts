@@ -5,11 +5,13 @@ const root = join(import.meta.dir, "..");
 const read = (path: string) => Bun.file(join(root, path)).text();
 
 describe("superficie publicada", () => {
-  test("no anuncia minijuegos pendientes ni conserva controles de puntuación ficticios", async () => {
-    const games = await read("src/app/neural-arcade/components/MiniGames.tsx");
-    expect(games).not.toContain("Mini-juego en desarrollo");
-    expect(games).not.toContain("+10 pts");
-    expect(games).not.toContain("PLACEHOLDER GAMES");
+  test("publica cuatro mecánicas jugables y no cuestionarios como núcleo", async () => {
+    const missions = await read("src/app/neural-arcade/components/MissionLevel.tsx");
+    expect(missions).toContain("ConceptDiscovery");
+    expect(missions).toContain("PipelineMission");
+    expect(missions).toContain("SorterMission");
+    expect(missions).toContain("BuilderMission");
+    expect(missions).not.toContain("QuizRunner");
   });
 
   test("muestra el crédito de creación con IA dentro de la aplicación", async () => {
@@ -34,18 +36,34 @@ describe("superficie publicada", () => {
     expect(app).toContain("<main");
   });
 
-  test("las respuestas de los cuestionarios usan botones nativos", async () => {
-    const runner = await read("src/app/neural-arcade/components/QuizRunner.tsx");
-    expect(runner).not.toContain('role="button"');
-    expect(runner).toContain('type="button"');
-    expect(runner).not.toContain("highlightGlossary(opt");
+  test("publica una URL canónica coherente para buscadores y redes", async () => {
+    const layout = await read("src/app/layout.tsx");
+    expect(layout).toContain('canonical: "/"');
+    expect(layout).toContain('url: "/"');
+    expect(layout).toContain("url: siteUrl");
+  });
+
+  test("las interacciones de las misiones usan botones nativos", async () => {
+    const missions = await read("src/app/neural-arcade/components/MissionLevel.tsx");
+    expect(missions).not.toContain('role="button"');
+    expect(missions).toContain('type="button"');
+  });
+
+  test("la teoría opcional muestra la fórmula antes de explicarla", async () => {
+    const missions = await read("src/app/neural-arcade/components/MissionLevel.tsx");
+    expect(missions).toContain("formatFormula(block.formula)");
+    expect(missions).toContain("block.formulaExplain");
   });
 
   test("respeta la preferencia de movimiento reducido", async () => {
     const page = await read("src/app/page.tsx");
     const css = await read("src/app/globals.css");
+    const app = await read("src/app/neural-arcade/NeuralArcade.tsx");
+    const shell = await read("src/app/neural-arcade/components/LevelShell.tsx");
     expect(page).toContain('reducedMotion="user"');
     expect(css).toContain("prefers-reduced-motion: reduce");
+    expect(app).toContain('behavior: shouldReduceMotion ? "auto" : "smooth"');
+    expect(shell).toContain('behavior: shouldReduceMotion ? "auto" : "smooth"');
   });
 
   test("el service worker precarga de forma independiente y no guarda errores HTTP", async () => {

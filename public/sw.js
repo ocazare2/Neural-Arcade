@@ -1,5 +1,5 @@
 // Neural Arcade Service Worker — cache-first for static, network-first for navigation
-const CACHE_NAME = "neural-arcade-v1.0.0";
+const CACHE_NAME = "neural-arcade-v1.1.0";
 const PRECACHE_URLS = [
   "/",
   "/logo.svg",

@@ -11,6 +11,7 @@ import {
   sanitizeProgress,
   sanitizeXp,
 } from "./progress";
+import { getResumePhase } from "./learning-progress";
 
 const PUBLISHED_LEVEL_IDS = new Set(ALL_LEVELS.map((level) => level.id));
 
@@ -35,10 +36,13 @@ export const useArcade = create<ArcadeState>()(
       activeLevel: null,
       activePhase: "theory",
 
-      openLevel: (id) => set({
-        activeLevel: sanitizeActiveLevel(id, PUBLISHED_LEVEL_IDS),
-        activePhase: "theory",
-      }),
+      openLevel: (id) => {
+        const activeLevel = sanitizeActiveLevel(id, PUBLISHED_LEVEL_IDS);
+        set({
+          activeLevel,
+          activePhase: activeLevel ? getResumePhase(get().progress, activeLevel) : "theory",
+        });
+      },
       closeLevel: () => set({ activeLevel: null, activePhase: "theory" }),
       setPhase: (p) => set({ activePhase: sanitizePhase(p) }),
 

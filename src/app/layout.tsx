@@ -14,8 +14,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = getSiteUrl();
+
 export const metadata: Metadata = {
-  metadataBase: new URL(getSiteUrl()),
+  metadataBase: new URL(siteUrl),
   title: {
     default: "Neural Arcade · Aprende IA jugando",
     template: "%s · Neural Arcade",
@@ -40,6 +42,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Ozkar K. Azares" }],
   creator: "Ozkar K. Azares",
   publisher: "Ozkar K. Azares",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: [
       { url: "/logo.svg", type: "image/svg+xml" },
@@ -48,9 +53,10 @@ export const metadata: Metadata = {
     apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
   openGraph: {
+    url: "/",
     title: "Neural Arcade · Aprende IA jugando",
     description:
-      "26 niveles interactivos para aprender IA desde cero: teoría, demos, práctica, retos y maestría.",
+      "26 niveles y 104 misiones para aprender IA construyendo conceptos, desde matemáticas hasta agentes seguros.",
     siteName: "Neural Arcade",
     type: "website",
     locale: "es_MX",
@@ -83,6 +89,7 @@ const structuredData = {
   operatingSystem: "Web",
   description:
     "Juego educativo con 26 niveles interactivos para aprender inteligencia artificial desde cero.",
+  url: siteUrl,
   author: {
     "@type": "Person",
     name: "Ozkar K. Azares",

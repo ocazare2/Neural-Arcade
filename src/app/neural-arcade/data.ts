@@ -423,16 +423,18 @@ export const LEVELS: LevelMeta[] = [
   {
     id: "align",
     index: 8,
-    title: "ALIGNMENT",
+    title: "CHAT Y ALIGNMENT",
     icon: "🎯",
     color: "#22d3ee",
-    tag: "De texto crudo a asistente útil",
-    summary: "Pre-entrenamiento, SFT, RLHF y DPO: las 4 etapas de un LLM moderno.",
+    tag: "Del generador de texto al asistente que conversa",
+    summary: "Roles, plantilla de chat y preferencias convierten un predictor de tokens en un asistente útil.",
     estimatedMin: 20,
-    concepts: ["Pre-entrenamiento", "SFT (Supervised Fine-Tuning)", "RLHF", "Reward model", "PPO", "DPO", "Constitutional AI"],
+    concepts: ["Pre-entrenamiento", "Roles de chat", "Chat template", "SFT (Supervised Fine-Tuning)", "RLHF", "Reward model", "PPO", "DPO", "Constitutional AI"],
     paperRef: { title: "Training language models to follow instructions with human feedback", year: 2022, authors: "Ouyang et al. (OpenAI, InstructGPT)" },
     glossary: [
       { term: "Pre-entrenamiento", definition: "Fase 1: entrenar sobre trillones de tokens de internet con next-token prediction. Da un modelo que predice texto pero no sigue instrucciones." },
+      { term: "Roles de chat", definition: "Etiquetas como system, user y assistant que separan las instrucciones, el mensaje de la persona y la respuesta del modelo." },
+      { term: "Chat template", definition: "Formato que convierte los turnos y sus roles en la secuencia exacta de tokens que recibe el modelo." },
       { term: "SFT", definition: "Supervised Fine-Tuning. Fase 2: ajustar el modelo con ejemplos (instrucción, respuesta ideal) supervisados. Aprende el formato 'pregunta → respuesta'." },
       { term: "RLHF", definition: "Reinforcement Learning from Human Feedback. Fase 3: entrenar un reward model con preferencias humanas y optimizar el LLM con PPO contra ese reward." },
       { term: "Reward model", definition: "Modelo que asigna un escalar r(prompt, respuesta) a partir de rankings humanos. Sirve como función de recompensa en PPO." },
@@ -441,9 +443,9 @@ export const LEVELS: LevelMeta[] = [
     ],
     theory: [
       {
-        title: "Las 4 etapas de un LLM moderno",
+        title: "Del predictor de texto al chat",
         level: "Básico",
-        body: "Un modelo como GPT-4 o Claude pasa por cuatro fases:\n\n1. **Pre-entrenamiento** — trillones de tokens de internet. Aprende gramática, hechos, razonamiento básico. Sale un 'completador de texto'.\n2. **SFT** — miles de ejemplos (prompt, respuesta ideal). Aprende el formato de diálogo.\n3. **RLHF / DPO** — millones de comparaciones (A vs B). Aprende qué respuestas prefieren los humanos.\n4. **Constitutional AI (opcional, Anthropic)** — el modelo se auto-corrige contra principios explícitos en lugar de feedback humano bruto.",
+        body: "Un modelo base solo continúa texto. Para usarlo como chat, una **chat template** convierte cada turno en tokens marcados con roles: **system** define reglas, **user** aporta la petición y **assistant** delimita la respuesta esperada. Después, SFT enseña ejemplos de diálogo y RLHF o DPO favorecen respuestas útiles. Constitutional AI puede añadir principios explícitos para revisar el comportamiento. La interfaz de chat no vive mágicamente dentro del modelo: la aplicación construye esa secuencia en cada turno.",
       },
       {
         title: "Pre-entrenamiento: la función objetivo",
