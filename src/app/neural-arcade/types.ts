@@ -4,7 +4,7 @@
 
 export type Phase = "theory" | "demo" | "practice" | "challenge" | "mastery";
 
-type Difficulty = "Básico" | "Intermedio" | "Avanzado" | "Experto";
+export type Difficulty = "Básico" | "Intermedio" | "Avanzado" | "Experto";
 
 interface GlossaryTerm {
   term: string;
@@ -13,7 +13,7 @@ interface GlossaryTerm {
   example?: string;
 }
 
-interface TheoryBlock {
+export interface TheoryBlock {
   title: string;
   level: Difficulty;
   body: string;

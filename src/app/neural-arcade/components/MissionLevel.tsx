@@ -21,6 +21,7 @@ import { formatFormula } from "../formula-format";
 import { ALL_LEVELS } from "../curriculum";
 import { useLocale } from "../i18n";
 import { playSound } from "../lib/sound";
+import { getLearningLadder, getLearningRung, type LearningRung } from "../learning-ladder";
 import type { MissionPlan, PipelineStep, SortItem } from "../mission-types";
 import { useArcade } from "../store";
 import type { LevelMeta, Phase } from "../types";
@@ -30,18 +31,18 @@ const MISSION_PHASES: readonly Phase[] = ["theory", "demo", "practice", "challen
 
 const PHASE_LABELS = {
   es: {
-    theory: "Descubre",
-    demo: "Conecta",
-    practice: "Experimenta",
-    challenge: "Construye",
-    mastery: "Resumen",
+    theory: "Base",
+    demo: "Mecanismo",
+    practice: "Precisión",
+    challenge: "Diseña",
+    mastery: "Mapa",
   },
   en: {
-    theory: "Discover",
-    demo: "Connect",
-    practice: "Experiment",
-    challenge: "Build",
-    mastery: "Recap",
+    theory: "Foundation",
+    demo: "Mechanism",
+    practice: "Precision",
+    challenge: "Design",
+    mastery: "Map",
   },
 } satisfies Record<string, Record<Phase, string>>;
 
@@ -54,6 +55,7 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
   const [finished, setFinished] = useState(false);
   const mission = MISSION_PHASES.indexOf(activePhase);
   const storedDone = progress[level.id]?.phasesDone ?? [];
+  const rung = activePhase === "mastery" ? null : getLearningRung(level, activePhase);
   // Preserve a partial mission's CTA after a refresh, while keeping a full
   // replay playable instead of letting completed levels jump to the recap.
   const phaseReady = readyPhase === activePhase || (!storedDone.includes("mastery") && storedDone.includes(activePhase));
@@ -112,9 +114,11 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
               color={level.color}
               mission={mission}
               title={PHASE_LABELS[locale][activePhase]}
-              subtitle={mission === 0 ? plan.bridge : plan.outcome}
+              subtitle={rung?.question ?? plan.outcome}
               spanish={spanish}
             />
+
+            {rung && <LearningLadder rung={rung} color={level.color} spanish={spanish} />}
 
             {activePhase === "theory" && (
               <ConceptDiscovery key={level.id} plan={plan} color={level.color} onComplete={finishMission} />
@@ -139,8 +143,6 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
                   : (spanish ? "SIGUIENTE MISIÓN" : "NEXT MISSION")}
               />
             )}
-
-            <OptionalTheory level={level} mission={mission} spanish={spanish} />
           </section>
         )}
       </LevelShell>
@@ -442,23 +444,28 @@ function BuilderMission({ plan, color, onComplete }: { plan: MissionPlan; color:
   function testBuild() {
     if (done) return;
     const missing = plan.build.modules.filter((module, index) => module.essential && !selected.has(index));
-    const extras = plan.build.modules.filter((module, index) => !module.essential && selected.has(index));
     if (cost > plan.build.budget) {
       setMistakes((value) => value + 1);
       setFeedback(spanish ? `La máquina consume ${cost}, pero solo tienes ${plan.build.budget}. Retira módulos que no ayudan al objetivo.` : `The machine uses ${cost}, but you only have ${plan.build.budget}. Remove modules that do not help the goal.`);
       playSound("wrong");
       return;
     }
-    if (missing.length || extras.length) {
+    if (missing.length) {
       setMistakes((value) => value + 1);
-      const clue = missing[0] ?? extras[0];
-      setFeedback(clue.why);
+      setFeedback(missing[0].why);
       playSound("wrong");
       return;
     }
+    const upgrades = plan.build.modules.filter((module, index) => !module.essential && selected.has(index));
     const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
     setDone(true);
-    setFeedback(spanish ? "La máquina cumple el objetivo: cada módulo tiene una función y no desperdicias presupuesto." : "The machine meets the goal: every module has a purpose and no budget is wasted.");
+    setFeedback(spanish
+      ? upgrades.length
+        ? `El núcleo cumple el objetivo y añadiste ${upgrades.map((module) => `«${module.label}»`).join(" y ")} sin superar el presupuesto.`
+        : `El núcleo cumple el objetivo. Dejaste ${plan.build.budget - cost} de margen: también es una decisión válida si no aporta una mejora necesaria.`
+      : upgrades.length
+        ? `The core meets the goal and you added ${upgrades.map((module) => `“${module.label}”`).join(" and ")} without exceeding the budget.`
+        : `The core meets the goal. You kept ${plan.build.budget - cost} spare: that is valid when no extra upgrade is needed.`);
     if (!reported.current) {
       reported.current = true;
       onComplete(stars);
@@ -467,6 +474,12 @@ function BuilderMission({ plan, color, onComplete }: { plan: MissionPlan; color:
 
   return (
     <GameCard title={plan.build.title} instruction={plan.build.brief} icon={<Coins className="h-5 w-5" aria-hidden />}>
+      <div className="rounded-xl border border-violet-400/25 bg-violet-400/5 p-3 text-xs leading-relaxed text-violet-100">
+        <p className="font-extrabold text-violet-200">{spanish ? "Decisión de arquitectura" : "Architecture decision"}</p>
+        <p className="mt-1">{spanish
+          ? "Primero instala el núcleo indispensable. Si queda energía, una mejora opcional puede entrar; no existe un premio por gastar todo el presupuesto."
+          : "Install the indispensable core first. If energy remains, an optional upgrade can fit; spending every point is not the goal."}</p>
+      </div>
       <div className={cn("rounded-xl border p-3", cost > plan.build.budget ? "border-rose-400/50 bg-rose-500/10" : "border-cyan-400/30 bg-cyan-500/5")}>
         <div className="flex items-center justify-between gap-3 text-sm">
           <span className="font-bold text-slate-200">{spanish ? "Energía usada" : "Energy used"}</span>
@@ -511,41 +524,67 @@ function BuilderMission({ plan, color, onComplete }: { plan: MissionPlan; color:
       {done && (
         <Completion>
           {spanish
-            ? <>{plan.build.modules.filter((module) => module.essential).map((module) => module.label).join(" + ")} forman la solución. Obtuviste {mistakes === 0 ? "3" : mistakes <= 2 ? "2" : "1"} estrellas según cuántas pruebas necesitaste.</>
-            : <>{plan.build.modules.filter((module) => module.essential).map((module) => module.label).join(" + ")} form the solution. You earned {mistakes === 0 ? "3" : mistakes <= 2 ? "2" : "1"} stars based on how many tests you needed.</>}
+            ? <>{plan.build.modules.filter((module) => module.essential).map((module) => module.label).join(" + ")} forman el núcleo. {plan.build.modules.filter((module, index) => !module.essential && selected.has(index)).length > 0 ? "Las mejoras elegidas caben porque no sustituyeron una pieza crítica." : "Un diseño mínimo y verificable puede ser mejor que añadir piezas sin una razón."} Obtuviste {mistakes === 0 ? "3" : mistakes <= 2 ? "2" : "1"} estrellas según cuántas pruebas necesitaste.</>
+            : <>{plan.build.modules.filter((module) => module.essential).map((module) => module.label).join(" + ")} form the core. {plan.build.modules.filter((module, index) => !module.essential && selected.has(index)).length > 0 ? "The upgrades fit because they did not replace a critical piece." : "A minimal, verifiable design can be better than adding pieces without a reason."} You earned {mistakes === 0 ? "3" : mistakes <= 2 ? "2" : "1"} stars based on how many tests you needed.</>}
         </Completion>
       )}
     </GameCard>
   );
 }
 
-function OptionalTheory({ level, mission, spanish }: { level: LevelMeta; mission: number; spanish: boolean }) {
-  const block = level.theory[Math.max(0, Math.min(mission, level.theory.length - 1))];
-  if (!block) return null;
+function LearningLadder({ rung, color, spanish }: { rung: LearningRung; color: string; spanish: boolean }) {
+  const block = rung;
+  const paragraphs = block.body.split("\n\n").filter(Boolean);
+  const [coreIdea, ...details] = paragraphs;
   return (
-    <details className="mt-6 rounded-xl border border-slate-800 bg-slate-900/40">
-      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-300 focus-visible:outline-2 focus-visible:outline-cyan-400">
-        <BookOpen className="mr-2 inline h-4 w-4" aria-hidden />
-        {spanish ? "Quiero saber más · explicación opcional" : "I want to know more · optional explanation"}
-      </summary>
-      <div className="space-y-3 border-t border-slate-800 p-4 text-sm leading-relaxed text-slate-300">
-        <h3 className="font-bold text-slate-100">{block.title}</h3>
-        {block.body.split("\n\n").map((paragraph, index) => <p key={index}>{paragraph.replaceAll("**", "")}</p>)}
+    <aside className="mb-5 overflow-hidden rounded-2xl border bg-slate-900/70" style={{ borderColor: `${color}55` }} aria-labelledby={`learning-layer-${rung.phase}`}>
+      <div className="border-b border-slate-700/70 bg-slate-950/40 px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color }}>
+            {spanish ? `Capa ${rung.step} de 4 · ${rung.level}` : `Layer ${rung.step} of 4 · ${rung.level}`}
+          </p>
+          <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+            {spanish ? "Antes de jugar" : "Before playing"}
+          </span>
+        </div>
+        <h2 id={`learning-layer-${rung.phase}`} className="mt-2 flex items-start gap-2 text-base font-extrabold text-slate-100 sm:text-lg">
+          <BookOpen className="mt-0.5 h-5 w-5 shrink-0" style={{ color }} aria-hidden />
+          <span>{block.title}</span>
+        </h2>
+      </div>
+      <div className="space-y-4 p-4 text-sm leading-relaxed text-slate-300 sm:p-5">
+        {coreIdea && <p>{coreIdea.replaceAll("**", "")}</p>}
         {block.formula && (
-          <div className="rounded-lg border border-cyan-400/25 bg-slate-950 p-3">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">{spanish ? "Fórmula" : "Formula"}</p>
+          <div className="rounded-xl border border-cyan-400/25 bg-slate-950 p-3">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">{spanish ? "Modelo o fórmula" : "Model or formula"}</p>
             <p className="overflow-x-auto whitespace-nowrap font-mono text-xs text-cyan-100 sm:text-sm" aria-label={spanish ? "Fórmula matemática" : "Mathematical formula"}>{formatFormula(block.formula)}</p>
             {block.formulaExplain && <p className="mt-3 text-xs leading-relaxed text-slate-400">{block.formulaExplain}</p>}
           </div>
         )}
+        <div className="rounded-xl border border-amber-300/20 bg-amber-300/5 p-3 text-xs leading-relaxed text-amber-50">
+          <p className="font-extrabold text-amber-200">{spanish ? "Pregunta que vas a resolver" : "Question you will resolve"}</p>
+          <p className="mt-1">{rung.question}</p>
+          <p className="mt-2 text-amber-100/80">{rung.action}</p>
+        </div>
+        {details.length > 0 && (
+          <details open={rung.step >= 3} className="rounded-xl border border-slate-700 bg-slate-950/40">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+              {spanish ? (rung.step >= 3 ? "Detalle técnico de esta capa" : "Profundiza cuando estés listo") : (rung.step >= 3 ? "Technical detail for this layer" : "Go deeper when you are ready")}
+            </summary>
+            <div className="space-y-3 border-t border-slate-700 p-3 text-xs leading-relaxed text-slate-300">
+              {details.map((paragraph, index) => <p key={index}>{paragraph.replaceAll("**", "")}</p>)}
+            </div>
+          </details>
+        )}
       </div>
-    </details>
+    </aside>
   );
 }
 
 function MasteryMission({ level, plan, onFinish }: { level: LevelMeta; plan: MissionPlan; onFinish: () => void }) {
   const { locale, t } = useLocale();
   const spanish = locale === "es";
+  const ladder = getLearningLadder(level);
   return (
     <section className="space-y-5" aria-labelledby="mission-recap-title">
       <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/5 p-5 sm:p-7">
@@ -555,6 +594,22 @@ function MasteryMission({ level, plan, onFinish }: { level: LevelMeta; plan: Mis
           {spanish ? "Ya puedes explicarlo y construirlo" : "Now you can explain and build it"}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-300">{plan.outcome}</p>
+      </div>
+
+      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/5 p-4 sm:p-5">
+        <h3 className="font-extrabold text-cyan-100">{spanish ? "Tu escalera de comprensión" : "Your understanding ladder"}</h3>
+        <p className="mt-1 text-xs leading-relaxed text-slate-300">{spanish ? "No solo nombraste conceptos: partiste de una intuición y terminaste tomando una decisión técnica." : "You did more than name concepts: you started from an intuition and ended with a technical decision."}</p>
+        <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+          {ladder.map((rung) => (
+            <li key={rung.phase} className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-950/50 p-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-cyan-400/50 font-mono text-xs font-extrabold text-cyan-200">{rung.step}</span>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">{rung.level}</p>
+                <p className="mt-1 text-xs font-bold leading-relaxed text-slate-100">{rung.title}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
 
       <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4 sm:p-5">
