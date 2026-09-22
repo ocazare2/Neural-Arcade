@@ -4,7 +4,7 @@
 
 export type Phase = "theory" | "demo" | "practice" | "challenge" | "mastery";
 
-export type Difficulty = "Básico" | "Intermedio" | "Avanzado" | "Experto";
+type Difficulty = "Básico" | "Intermedio" | "Avanzado" | "Experto";
 
 interface GlossaryTerm {
   term: string;

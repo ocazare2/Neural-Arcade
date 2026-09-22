@@ -1,6 +1,6 @@
-import type { Difficulty, LevelMeta, Phase, TheoryBlock } from "./types";
+import type { LevelMeta, Phase, TheoryBlock } from "./types";
 
-export const LEARNING_PHASES = ["theory", "demo", "practice", "challenge"] as const satisfies readonly Phase[];
+const LEARNING_PHASES = ["theory", "demo", "practice", "challenge"] as const satisfies readonly Phase[];
 
 type LearningPhase = (typeof LEARNING_PHASES)[number];
 
@@ -56,9 +56,4 @@ export function getLearningRung(level: LevelMeta, phase: LearningPhase): Learnin
 
 export function getLearningLadder(level: LevelMeta): LearningRung[] {
   return LEARNING_PHASES.map((phase) => getLearningRung(level, phase));
-}
-
-export function hasStandardLearningProgression(level: LevelMeta): boolean {
-  const expected: Difficulty[] = ["Básico", "Intermedio", "Avanzado", "Experto"];
-  return getLearningLadder(level).every((rung, index) => rung.level === expected[index]);
 }
