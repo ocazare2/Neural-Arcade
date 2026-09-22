@@ -11,20 +11,20 @@ type LearningGuidance = {
 
 const GUIDANCE: Record<LearningPhase, LearningGuidance> = {
   theory: {
-    question: "¿Qué representa esta pieza y qué problema resuelve antes de intentar usarla?",
-    action: "Nombra las entradas, la transformación y la salida en un ejemplo pequeño antes de jugar.",
+    question: "¿Qué entra, qué sale y para qué sirve esta pieza en un ejemplo que puedas ver?",
+    action: "Primero descríbela con tus palabras; después conserva su nombre técnico y su modelo exacto.",
   },
   demo: {
-    question: "¿Qué cambia en cada paso y qué resultado produce ese cambio en el sistema?",
-    action: "Sigue el mecanismo en orden y predice qué información debe existir al terminar cada estación.",
+    question: "Si cambias una pieza, ¿qué ocurre justo después y por qué?",
+    action: "Sigue una sola señal en orden y predice el resultado antes de moverla.",
   },
   practice: {
-    question: "¿Qué supuesto, límite o confusión frecuente cambia la respuesta aparentemente obvia?",
-    action: "Distingue las señales parecidas por su función técnica, no solo por cómo suenan sus nombres.",
+    question: "¿Qué detalle pequeño cambia una respuesta que parecía obvia?",
+    action: "Compara qué hace cada señal, no solo cómo suena su nombre técnico.",
   },
   challenge: {
-    question: "¿Qué decisión conserva lo esencial cuando hay presupuesto, costo o riesgo limitado?",
-    action: "Construye primero el núcleo verificable; usa el margen restante para mejoras que realmente aporten valor.",
+    question: "¿Qué no puede faltar y qué mejora vale la pena con un límite real?",
+    action: "Haz funcionar primero el núcleo; después añade solo mejoras que cambien el resultado.",
   },
 };
 

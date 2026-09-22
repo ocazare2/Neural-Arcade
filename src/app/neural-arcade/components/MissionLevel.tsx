@@ -24,6 +24,7 @@ import { useLocale } from "../i18n";
 import { playSound } from "../lib/sound";
 import { getLearningLadder, getLearningRung, type LearningRung } from "../learning-ladder";
 import type { MissionPlan, PipelineStep, SortItem } from "../mission-types";
+import { getPlainLanguageLayer, type PlainLanguageLayer } from "../plain-language";
 import { useArcade } from "../store";
 import type { LevelMeta, Phase } from "../types";
 import { LevelComplete, LevelShell, NextPhaseButton } from "./LevelShell";
@@ -57,6 +58,7 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
   const mission = MISSION_PHASES.indexOf(activePhase);
   const storedDone = progress[level.id]?.phasesDone ?? [];
   const rung = activePhase === "mastery" ? null : getLearningRung(level, activePhase);
+  const plainLayer = rung ? getPlainLanguageLayer(plan, rung.phase) : null;
   // Preserve a partial mission's CTA after a refresh, while keeping a full
   // replay playable instead of letting completed levels jump to the recap.
   const phaseReady = readyPhase === activePhase || (!storedDone.includes("mastery") && storedDone.includes(activePhase));
@@ -119,7 +121,7 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
               spanish={spanish}
             />
 
-            {rung && <LearningLadder rung={rung} color={level.color} spanish={spanish} />}
+            {rung && plainLayer && <LearningLadder rung={rung} plainLayer={plainLayer} color={level.color} spanish={spanish} />}
 
             {activePhase === "theory" && (
               <ConceptDiscovery key={level.id} plan={plan} color={level.color} onComplete={finishMission} />
@@ -539,7 +541,7 @@ function BuilderMission({ plan, color, onComplete }: { plan: MissionPlan; color:
   );
 }
 
-function LearningLadder({ rung, color, spanish }: { rung: LearningRung; color: string; spanish: boolean }) {
+function LearningLadder({ rung, plainLayer, color, spanish }: { rung: LearningRung; plainLayer: PlainLanguageLayer; color: string; spanish: boolean }) {
   const block = rung;
   const paragraphs = block.body.split("\n\n").filter(Boolean);
   const [coreIdea, ...details] = paragraphs;
@@ -560,6 +562,13 @@ function LearningLadder({ rung, color, spanish }: { rung: LearningRung; color: s
         </h2>
       </div>
       <div className="space-y-4 p-4 text-sm leading-relaxed text-slate-300 sm:p-5">
+        <div className="rounded-xl border border-emerald-300/25 bg-emerald-300/5 p-3 text-sm leading-relaxed text-emerald-50">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">{spanish ? "Sin jerga, sin recortar el modelo" : "Plain words, same technical model"}</p>
+          <h3 className="mt-1 font-extrabold text-emerald-100">{plainLayer.heading}</h3>
+          <p className="mt-2"><span className="font-bold text-emerald-200">{spanish ? "Nombre técnico:" : "Technical name:"}</span> {plainLayer.technicalTerm}</p>
+          <p className="mt-2">{plainLayer.explanation}</p>
+          <p className="mt-2 border-t border-emerald-300/15 pt-2 text-xs text-emerald-100/85"><span className="font-bold text-emerald-200">{spanish ? "Ejemplo pequeño:" : "Small example:"}</span> {plainLayer.example}</p>
+        </div>
         {coreIdea && <p>{coreIdea.replaceAll("**", "")}</p>}
         {block.formula && (
           <div className="rounded-xl border border-cyan-400/25 bg-slate-950 p-3">

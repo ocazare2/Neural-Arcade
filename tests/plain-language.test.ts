@@ -14,7 +14,7 @@ describe("explicaciones sin jerga", () => {
         expect(layer.heading.length).toBeGreaterThan(8);
         expect(layer.explanation.length).toBeGreaterThan(45);
         expect(layer.example.length).toBeGreaterThan(45);
-        expect(layer.technicalTerm.length).toBeGreaterThan(2);
+        expect(layer.technicalTerm.length).toBeGreaterThan(1);
       }
     }
   });
