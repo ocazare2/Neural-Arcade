@@ -36,4 +36,15 @@ describe("decisiones de arquitectura", () => {
       budget: 8,
     });
   });
+
+  test("no confunde una promesa del modelo con una mejora de seguridad", () => {
+    const safetyBuild = MISSION_PLANS.safety.build;
+    const safetyCore = safetyBuild.modules.flatMap((module, index) => module.essential ? [index] : []);
+    const promise = safetyBuild.modules.findIndex((module) => module.label === "Promesa de portarse bien");
+
+    expect(evaluateBuild(safetyBuild, [...safetyCore, promise])).toMatchObject({
+      status: "irrelevant",
+      unsuitable: [safetyBuild.modules[promise]],
+    });
+  });
 });
