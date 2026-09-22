@@ -457,6 +457,12 @@ function BuilderMission({ plan, color, onComplete }: { plan: MissionPlan; color:
       playSound("wrong");
       return;
     }
+    if (evaluation.status === "irrelevant") {
+      setMistakes((value) => value + 1);
+      setFeedback(evaluation.unsuitable[0].why);
+      playSound("wrong");
+      return;
+    }
     const { upgrades, spare } = evaluation;
     const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
     setDone(true);

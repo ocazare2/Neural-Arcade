@@ -3,6 +3,7 @@ import type { BuildModule, BuildPlan } from "./mission-types";
 export type BuildDecision =
   | { status: "over-budget"; cost: number; budget: number }
   | { status: "missing-core"; cost: number; missing: BuildModule[] }
+  | { status: "irrelevant"; cost: number; unsuitable: BuildModule[] }
   | { status: "success"; cost: number; spare: number; upgrades: BuildModule[] };
 
 /**
@@ -20,6 +21,9 @@ export function evaluateBuild(build: BuildPlan, selectedIndices: ReadonlySet<num
   const missing = build.modules.filter((module, index) => module.essential && !selected.has(index));
   if (missing.length > 0) return { status: "missing-core", cost, missing };
 
-  const upgrades = selectedModules.filter((module) => !module.essential);
+  const unsuitable = selectedModules.filter((module) => !module.essential && module.upgrade === false);
+  if (unsuitable.length > 0) return { status: "irrelevant", cost, unsuitable };
+
+  const upgrades = selectedModules.filter((module) => !module.essential && module.upgrade !== false);
   return { status: "success", cost, spare: build.budget - cost, upgrades };
 }

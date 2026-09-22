@@ -24,6 +24,8 @@ export interface BuildModule {
   label: string;
   cost: number;
   essential: boolean;
+  /** False marks a tempting but pedagogically invalid module, never an upgrade. */
+  upgrade?: boolean;
   why: string;
 }
 

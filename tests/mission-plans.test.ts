@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { evaluateBuild } from "../src/app/neural-arcade/build-decision";
 import { ALL_LEVELS } from "../src/app/neural-arcade/curriculum";
 import { MISSION_PLANS } from "../src/app/neural-arcade/mission-plans";
 
@@ -41,15 +42,19 @@ describe("misiones conceptuales", () => {
     }
   });
 
-  test("Construye tiene una solución exacta y posible dentro del presupuesto", () => {
+  test("Diseña tiene un núcleo viable y conserva decisiones opcionales cuando caben", () => {
     for (const plan of Object.values(MISSION_PLANS)) {
       const essential = plan.build.modules.filter((module) => module.essential);
       const essentialCost = essential.reduce((sum, module) => sum + module.cost, 0);
+      const coreIndexes = plan.build.modules.flatMap((module, index) => module.essential ? [index] : []);
+      const compatibleUpgrade = plan.build.modules.findIndex((module) => !module.essential && module.upgrade !== false && module.cost <= plan.build.budget - essentialCost);
       expect(plan.build.modules).toHaveLength(6);
       expect(essential.length).toBeGreaterThanOrEqual(3);
       expect(essential.length).toBeLessThanOrEqual(4);
       expect(essentialCost).toBeLessThanOrEqual(plan.build.budget);
       expect(plan.build.modules.every((module) => module.cost > 0 && module.why.length > 25)).toBe(true);
+      expect(evaluateBuild(plan.build, coreIndexes).status).toBe("success");
+      if (compatibleUpgrade >= 0) expect(evaluateBuild(plan.build, [...coreIndexes, compatibleUpgrade]).status).toBe("success");
     }
   });
 });
