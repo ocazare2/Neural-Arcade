@@ -19,6 +19,14 @@ function samePosition(a: Position, b: Position) {
   return a[0] === b[0] && a[1] === b[1];
 }
 
+function subtract(a: Position, b: Position): Position {
+  return [a[0] - b[0], a[1] - b[1]];
+}
+
+function vectorText(vector: Position) {
+  return `[${vector[0]}, ${vector[1]}]`;
+}
+
 function MissionFrame({ title, instruction, children }: {
   title: string;
   instruction: string;
@@ -61,30 +69,37 @@ function RobotMission({ rescue = false, onComplete }: MissionProps & { rescue?: 
   const target: Position = rescue ? [4, 0] : [3, 2];
   const walls = rescue ? RESCUE_WALLS : NO_WALLS;
   const [position, setPosition] = useState<Position>(start);
+  const [lastMove, setLastMove] = useState<Position>([0, 0]);
   const [feedback, setFeedback] = useState(rescue
-    ? "Los bloques grises son muros. Busca un camino libre."
-    : "Prueba la flecha derecha: cambia el primer número.");
+    ? "El error vectorial apunta desde tu posición hasta la meta. Los muros pueden impedir ir directo: usa el error como brújula, no como un camino obligatorio."
+    : "Un vector es una lista ordenada. p = [0, 0] tiene dos componentes: horizontal y vertical. Toca una flecha para sumar un desplazamiento Δp.");
   const complete = useMissionComplete(onComplete);
   const won = samePosition(position, target);
+  const error = subtract(target, position);
+  const previousPosition = subtract(position, lastMove);
 
   function move(dx: number, dy: number) {
     if (won) return;
     const next: Position = [position[0] + dx, position[1] + dy];
-    if (next.some(value => value < 0 || value > 4)) return;
+    if (next.some(value => value < 0 || value > 4)) {
+      setFeedback(`El desplazamiento Δp = ${vectorText([dx, dy])} saldría del tablero. Los dos componentes siguen siendo importantes: uno horizontal y otro vertical.`);
+      return;
+    }
     if (walls.some(wall => samePosition(wall, next))) {
-      setFeedback("Hay un muro por ese lado. Prueba otra dirección: no pierdes puntos.");
+      setFeedback("Hay un muro por ese lado. El error vectorial todavía indica dónde está la meta; prueba un componente distinto para rodear el obstáculo.");
       return;
     }
     setPosition(next);
+    setLastMove([dx, dy]);
     if (samePosition(next, target)) {
-      setFeedback(rescue ? "¡Robot rescatado! Encontraste un camino hasta la batería." : "¡Batería encontrada! Ya sabes moverte con dos números.");
+      setFeedback(rescue
+        ? "¡Robot rescatado! Tu error vectorial ahora es e = [0, 0]: posición y meta coinciden."
+        : "¡Batería encontrada! Llegaste usando suma de vectores, componente por componente.");
       complete();
     } else {
       setFeedback(rescue
-        ? `Separación de la meta: ${target[0] - next[0]} casillas en horizontal y ${next[1]} en vertical. Prueba y ajusta el camino.`
-        : dx !== 0
-        ? `Te moviste ${dx > 0 ? "a la derecha" : "a la izquierda"}. Horizontal: ${next[0]}; vertical: ${next[1]}.`
-        : `Te moviste ${dy > 0 ? "hacia arriba" : "hacia abajo"}. Horizontal: ${next[0]}; vertical: ${next[1]}.`);
+        ? `p = ${vectorText(position)} + Δp = ${vectorText([dx, dy])} = ${vectorText(next)}. Ahora e = meta − p = ${vectorText(subtract(target, next))}.`
+        : `p = ${vectorText(position)} + Δp = ${vectorText([dx, dy])} = ${vectorText(next)}. Sumaste cada componente por separado.`);
     }
   }
 
@@ -97,20 +112,39 @@ function RobotMission({ rescue = false, onComplete }: MissionProps & { rescue?: 
 
   return (
     <MissionFrame
-      title={rescue ? "Rescata al robot" : "Encuentra la batería"}
+      title={rescue ? "Error vectorial: rescata al robot" : "Laboratorio de vectores"}
       instruction={rescue
-        ? "Lleva al robot hasta la batería con las flechas. Rodea los muros; puedes probar sin límite."
-        : "Toca las flechas para llevar al robot hasta la batería. Cada toque lo mueve una casilla."}
+        ? "La meta y tu posición son vectores. Calcula e = meta − posición, luego rodea los muros con desplazamientos pequeños; puedes probar sin límite."
+        : "La posición p y cada movimiento Δp son vectores de dos componentes. Llega a la batería sumando desplazamientos, no memorizando flechas."}
     >
-      <div className="grid grid-cols-2 gap-2 text-center">
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-2.5">
-          <p className="text-xs text-cyan-200">Tu robot</p>
-          <p className="mt-1 font-mono text-2xl font-bold text-cyan-300">[{position[0]}, {position[1]}]</p>
+      <div className="rounded-xl border border-cyan-400/25 bg-cyan-950/20 p-3 sm:p-4">
+        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-300">El lenguaje del tablero</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-200">
+          Un <strong className="text-cyan-200">vector</strong> es una lista ordenada de números. En <span className="font-mono text-cyan-100">p = [x, y]</span>, el primer componente mide horizontal y el segundo vertical.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+          <div className="rounded-lg border border-cyan-500/20 bg-slate-950/60 p-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Posición p</p>
+            <p className="mt-1 font-mono text-lg font-bold text-cyan-200">{vectorText(position)}</p>
+          </div>
+          <div className="rounded-lg border border-amber-400/20 bg-slate-950/60 p-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Meta</p>
+            <p className="mt-1 font-mono text-lg font-bold text-amber-200">{vectorText(target)}</p>
+          </div>
+          <div className="rounded-lg border border-violet-400/20 bg-slate-950/60 p-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Último Δp</p>
+            <p className="mt-1 font-mono text-lg font-bold text-violet-200">{vectorText(lastMove)}</p>
+          </div>
+          <div className="rounded-lg border border-emerald-400/20 bg-slate-950/60 p-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Error e</p>
+            <p className="mt-1 font-mono text-lg font-bold text-emerald-200">{vectorText(error)}</p>
+          </div>
         </div>
-        <div className="rounded-xl border border-amber-400/25 bg-amber-950/20 p-2.5">
-          <p className="text-xs text-amber-200">Batería · destino</p>
-          <p className="mt-1 font-mono text-2xl font-bold text-amber-300">[{target[0]}, {target[1]}]</p>
+        <div className="mt-3 rounded-lg bg-slate-950/70 p-2 text-center font-mono text-xs text-slate-300 sm:text-sm">
+          <span className="text-violet-200">{vectorText(previousPosition)}</span> + <span className="text-cyan-200">{vectorText(lastMove)}</span> = <span className="text-emerald-200">{vectorText(position)}</span>
         </div>
+        {rescue && <p className="mt-2 text-center font-mono text-xs text-emerald-100">posición + e = {vectorText(position)} + {vectorText(error)} = {vectorText(target)} = meta</p>}
+        <p className="mt-2 text-center text-xs font-semibold text-amber-200">Dimensión: 2 componentes</p>
       </div>
 
       <div className="mx-auto w-full max-w-56 sm:max-w-72">
@@ -149,7 +183,7 @@ function RobotMission({ rescue = false, onComplete }: MissionProps & { rescue?: 
         </div>
         <p className="mt-3 text-center text-xs leading-relaxed text-slate-300">
           [<span className="text-cyan-300">horizontal ↔</span>, <span className="text-amber-300">vertical ↕</span>]
-          <br />La cuenta empieza en 0, abajo a la izquierda.
+          <br />El origen es [0, 0], abajo a la izquierda. Cambiar el orden cambia el punto: [3, 2] ≠ [2, 3].
         </p>
       </div>
 
@@ -166,17 +200,18 @@ function RobotMission({ rescue = false, onComplete }: MissionProps & { rescue?: 
           >
             <Icon className="h-6 w-6" aria-hidden />
             <span aria-hidden className="text-[10px] font-medium">{label}</span>
+            <span aria-hidden className="font-mono text-[9px] text-cyan-300">Δp {vectorText([dx, dy])}</span>
           </button>
         ))}
       </div>
       <p aria-live="polite" aria-atomic="true" className="min-h-10 text-center text-sm leading-relaxed text-slate-300">{feedback}</p>
       {won ? (
         <Discovery>
-          {rescue ? <><strong>[4, 0]</strong> indica tu posición: 4 en horizontal y 0 en vertical. La diferencia con la meta ahora es cero. Aquí llamamos <strong>error</strong> a esa diferencia. Al entrenar una IA también se compara su resultado con una meta para decidir qué ajustar.</>
-            : <><strong>[3, 2]</strong> reúne dos números: 3 pasos a la derecha y 2 hacia arriba desde el inicio. A esta lista ordenada la llamamos <strong>vector</strong>. Una IA también usa listas de números para representar información; cada posición de la lista guarda algo distinto.</>}
+          {rescue ? <><strong>e = meta − p = [0, 0]</strong>: ya no hay diferencia entre tu predicción y el objetivo. En una IA, medir ese error permite decidir qué números ajustar; los muros te recuerdan que minimizarlo puede requerir varios pasos.</>
+            : <><strong>p = [3, 2]</strong> es un vector de dimensión 2: sus componentes son 3 horizontal y 2 vertical. Cada flecha añadió otro vector Δp; al sumar componente por componente llegaste a la meta. Una IA también usa vectores, solo que sus listas pueden tener cientos o miles de componentes.</>}
         </Discovery>
       ) : (
-        <button type="button" onClick={() => { setPosition(start); setFeedback("De vuelta al inicio. Tienes todos los intentos que necesites."); }} className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-cyan-300">
+        <button type="button" onClick={() => { setPosition(start); setLastMove([0, 0]); setFeedback(rescue ? "Volviste al inicio. Recalcula e = meta − p y prueba otra ruta." : "Volviste al origen p = [0, 0]. Un vector se entiende al poder cambiarlo, observarlo y sumarlo."); }} className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-cyan-300">
           <RotateCcw className="h-4 w-4" aria-hidden /> Volver al inicio
         </button>
       )}
@@ -189,6 +224,7 @@ function PixelMission({ onComplete }: MissionProps) {
   const complete = useMissionComplete(onComplete);
   const won = pixels.every((pixel, index) => pixel === PIXEL_TARGET[index]);
   const correct = pixels.filter((pixel, index) => pixel === PIXEL_TARGET[index]).length;
+  const rows = [0, 1, 2].map((row) => pixels.slice(row * 3, row * 3 + 3).map(Number));
 
   function toggle(index: number) {
     if (won) return;
@@ -198,7 +234,14 @@ function PixelMission({ onComplete }: MissionProps) {
   }
 
   return (
-    <MissionFrame title="Dibuja una señal de rescate" instruction="Copia el signo +. Toca una casilla para encenderla; vuelve a tocarla para apagarla.">
+    <MissionFrame title="Matriz de píxeles: dibuja una señal" instruction="Copia el signo +. Cada fila es un vector de 3 componentes; al apilar 3 filas obtienes una matriz 3 × 3.">
+      <div className="rounded-xl border border-violet-400/25 bg-violet-950/20 p-3 text-center">
+        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-violet-300">Matriz M</p>
+        <p className="mt-1 text-xs text-slate-300">Forma: <strong className="font-mono text-violet-200">3 filas × 3 columnas</strong> = 9 números. Cada fila es un vector de dimensión 3.</p>
+        <output aria-live="polite" aria-label="Matriz actual de píxeles" className="mt-3 block overflow-x-auto whitespace-nowrap rounded-lg bg-slate-950/70 p-2 font-mono text-xs text-cyan-100">
+          [{rows.map((row) => `[${row.join(", ")}]`).join(", ")}]
+        </output>
+      </div>
       <div className="flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
         <div className="text-center">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-amber-300">Así debe quedar</p>
@@ -235,7 +278,7 @@ function PixelMission({ onComplete }: MissionProps) {
         </div>
       </div>
       <p aria-live="polite" aria-atomic="true" className="text-center text-sm text-slate-300">{correct} de 9 casillas coinciden con el modelo.</p>
-      {won ? <Discovery>Tu dibujo tiene <strong>3 filas</strong> (líneas horizontales) y <strong>3 columnas</strong> (líneas verticales). Esa tabla de números se llama <strong>matriz</strong>. Al cambiar un 0 por un 1 cambió la imagen: así puedes representar una imagen con números para que una máquina la procese.</Discovery>
+      {won ? <Discovery>Tu dibujo es una <strong>matriz 3 × 3</strong>: tres vectores de dimensión 3 apilados. Cada entrada conserva fila y columna; por eso cambiar un 0 por un 1 cambia una parte concreta de la imagen. Una máquina procesa imágenes como tablas de números más grandes.</Discovery>
         : <p className="text-center text-xs leading-relaxed text-slate-400">Pista: enciende el centro y sus cuatro vecinos. Deja las esquinas en 0.</p>}
     </MissionFrame>
   );
@@ -247,6 +290,8 @@ function EnergyMission({ onComplete }: MissionProps) {
   const complete = useMissionComplete(onComplete);
   const energy = cells * 2 + stars * 3;
   const won = energy === 12;
+  const inputs: Position = [cells, stars];
+  const weights: Position = [2, 3];
 
   function change(source: "cells" | "stars", delta: number) {
     if (won) return;
@@ -258,7 +303,18 @@ function EnergyMission({ onComplete }: MissionProps) {
   }
 
   return (
-    <MissionFrame title="Carga el portal" instruction="Consigue exactamente 12 de energía. Cada pila aporta 2 y cada estrella aporta 3. Añade o quita hasta encontrar una combinación.">
+    <MissionFrame title="Producto punto: carga el portal" instruction="Consigue exactamente 12 de energía. Empareja cada entrada con su peso, multiplica y suma: eso es un producto punto.">
+      <div className="rounded-xl border border-fuchsia-400/25 bg-fuchsia-950/20 p-3 text-center">
+        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-fuchsia-300">Dos vectores, un número</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm">
+          <div className="rounded-lg bg-slate-950/70 p-2 text-cyan-100">x = {vectorText(inputs)}<span className="mt-1 block font-sans text-[10px] text-slate-400">entradas: pilas, estrellas</span></div>
+          <div className="rounded-lg bg-slate-950/70 p-2 text-amber-100">w = {vectorText(weights)}<span className="mt-1 block font-sans text-[10px] text-slate-400">pesos: aporte de cada tipo</span></div>
+        </div>
+        <p className="mt-3 text-xs text-slate-300">Dimensión: 2 componentes en ambos vectores. El producto punto devuelve un <strong className="text-fuchsia-200">escalar</strong>: un solo número.</p>
+        <output aria-live="polite" className="mt-3 block overflow-x-auto whitespace-nowrap rounded-lg bg-slate-950/70 p-2 font-mono text-sm text-fuchsia-100">
+          x · w = ({cells} × 2) + ({stars} × 3) = {energy}
+        </output>
+      </div>
       <div className={cn("rounded-xl border p-4 text-center", won ? "border-emerald-400/50 bg-emerald-950/30" : energy > 12 ? "border-amber-400/40 bg-amber-950/20" : "border-cyan-400/30 bg-cyan-950/30")}>
         <p className="mb-2 flex items-center justify-center gap-2 text-sm text-slate-300"><Zap className="h-4 w-4 text-amber-300" aria-hidden /> Energía del portal</p>
         <p className="font-mono text-3xl font-bold text-cyan-100">{energy} <span className="text-lg text-slate-400">/ 12</span></p>
@@ -285,11 +341,11 @@ function EnergyMission({ onComplete }: MissionProps) {
         ))}
       </div>
       <div className="rounded-lg bg-slate-900 p-3 text-center">
-        <p className="text-xs text-slate-400">Sumamos lo que aporta cada grupo</p>
-        <p className="mt-1 font-mono text-lg text-cyan-100">{cells * 2} + {stars * 3} = {energy}</p>
+        <p className="text-xs text-slate-400">Emparejamos componentes, multiplicamos y sumamos</p>
+        <p className="mt-1 font-mono text-lg text-cyan-100">{vectorText(inputs)} · {vectorText(weights)} = {cells * 2} + {stars * 3} = {energy}</p>
       </div>
       <p aria-live="polite" aria-atomic="true" className="text-center text-sm text-slate-300">{won ? "¡Portal encendido! Encontraste una combinación." : energy < 12 ? `Faltan ${12 - energy} de energía. Prueba con + y −.` : `Sobran ${energy - 12} de energía. Quita o cambia alguna pieza; no pierdes puntos.`}</p>
-      {won && <Discovery>Multiplicaste cada cantidad por su aporte y después sumaste: <strong>{cells} × 2 + {stars} × 3 = 12</strong>. Los aportes 2 y 3 se llaman <strong>pesos</strong>: una estrella cuenta más que una pila. Una <strong>neurona artificial</strong> es una pequeña unidad de cálculo de una IA; usa una <strong>suma ponderada</strong> como esta para combinar información con distinta importancia.</Discovery>}
+      {won && <Discovery>Calculaste el <strong>producto punto</strong> <strong>x · w = {cells} × 2 + {stars} × 3 = 12</strong>. Los vectores deben tener la misma dimensión para emparejar sus componentes. Los valores de w son <strong>pesos</strong>: una neurona artificial usa este mismo patrón —producto punto más sesgo— antes de decidir su salida.</Discovery>}
     </MissionFrame>
   );
 }

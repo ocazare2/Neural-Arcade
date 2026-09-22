@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { BookOpen, CheckCircle2, Gamepad2, Trophy } from "lucide-react";
 import { getNextLevel } from "../curriculum";
+import { formatFormula } from "../formula-format";
 import { useLocale } from "../i18n";
 import { playSound } from "../lib/sound";
 import { useArcade } from "../store";
@@ -16,11 +17,11 @@ import { TokenMission } from "./TokenMissions";
 const MISSION_PHASES: Phase[] = ["theory", "demo", "practice", "challenge"];
 const LABELS = {
   es: {
-    math: ["Mover", "Dibujar", "Cargar", "Rescatar"],
+    math: ["Vectores", "Matrices", "Producto punto", "Error"],
     tokens: ["Separar", "Construir", "Numerar", "Enviar"],
   },
   en: {
-    math: ["Move", "Draw", "Charge", "Rescue"],
+    math: ["Vectors", "Matrices", "Dot product", "Error"],
     tokens: ["Split", "Build", "Number", "Send"],
   },
 };
@@ -33,6 +34,7 @@ export function BeginnerLevel({ level }: { level: LevelMeta }) {
   const isMath = level.id === "math";
   const labels = LABELS[locale][isMath ? "math" : "tokens"];
   const mission = MISSION_PHASES.indexOf(activePhase);
+  const block = level.theory[mission];
   const spanish = locale === "es";
   const storedDone = progress[level.id]?.phasesDone ?? [];
   // A partial session can safely resume at its already-finished mission after
@@ -96,7 +98,7 @@ export function BeginnerLevel({ level }: { level: LevelMeta }) {
                   : "Your stars recognize completed missions. Trying and making mistakes are part of learning."}
               </p>
               <ul className="mt-5 space-y-4">
-                {level.glossary.slice(0, 4).map(entry => (
+                {(isMath ? level.glossary : level.glossary.slice(0, 4)).map(entry => (
                   <li key={entry.term} className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" />
                     <div>
@@ -140,10 +142,19 @@ export function BeginnerLevel({ level }: { level: LevelMeta }) {
                 {spanish ? "¿Por qué funciona? · explicación opcional" : "Why does it work? · optional explanation"}
               </summary>
               <div className="space-y-3 border-t border-slate-800 p-4 text-sm leading-relaxed text-slate-300">
-                <h3 className="font-bold text-slate-100">{level.theory[mission]?.title}</h3>
-                {level.theory[mission]?.body.split("\n\n").map((paragraph, index) => (
+                <h3 className="font-bold text-slate-100">{block?.title}</h3>
+                {block?.body.split("\n\n").map((paragraph, index) => (
                   <p key={index}>{paragraph.replaceAll("**", "")}</p>
                 ))}
+                {block?.formula && (
+                  <div className="rounded-lg border border-cyan-400/25 bg-slate-950 p-3">
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">{spanish ? "Fórmula" : "Formula"}</p>
+                    <p className="overflow-x-auto whitespace-nowrap font-mono text-xs text-cyan-100 sm:text-sm" aria-label={spanish ? "Fórmula matemática" : "Mathematical formula"}>
+                      {formatFormula(block.formula)}
+                    </p>
+                    {block.formulaExplain && <p className="mt-3 text-xs leading-relaxed text-slate-400">{block.formulaExplain}</p>}
+                  </div>
+                )}
               </div>
             </details>
           </section>
