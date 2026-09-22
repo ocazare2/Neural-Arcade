@@ -114,13 +114,13 @@ function RobotMission({ rescue = false, onComplete }: MissionProps & { rescue?: 
     <MissionFrame
       title={rescue ? "Error vectorial: rescata al robot" : "Laboratorio de vectores"}
       instruction={rescue
-        ? "La meta y tu posición son vectores. Calcula e = meta − posición, luego rodea los muros con desplazamientos pequeños; puedes probar sin límite."
-        : "La posición p y cada movimiento Δp son vectores de dos componentes. Llega a la batería sumando desplazamientos, no memorizando flechas."}
+        ? "Describe la meta y tu posición con vectores desde el origen. Calcula e = meta − posición, luego rodea los muros con desplazamientos pequeños; puedes probar sin límite."
+        : "La coordenada del robot es un punto; desde el origen la describimos con su vector de posición p. Llega a la batería sumando desplazamientos Δp, no memorizando flechas."}
     >
       <div className="rounded-xl border border-cyan-400/25 bg-cyan-950/20 p-3 sm:p-4">
         <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-300">El lenguaje del tablero</p>
         <p className="mt-2 text-sm leading-relaxed text-slate-200">
-          Un <strong className="text-cyan-200">vector</strong> es una lista ordenada de números. En <span className="font-mono text-cyan-100">p = [x, y]</span>, el primer componente mide horizontal y el segundo vertical.
+          El robot está en el <strong className="text-cyan-200">punto</strong> <span className="font-mono text-cyan-100">(x, y)</span>. La flecha desde el origen hasta ese punto es su <strong className="text-cyan-200">vector de posición</strong> <span className="font-mono text-cyan-100">p = [x, y]</span>: sus componentes están ordenados, horizontal primero y vertical después.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
           <div className="rounded-lg border border-cyan-500/20 bg-slate-950/60 p-2">
@@ -136,8 +136,8 @@ function RobotMission({ rescue = false, onComplete }: MissionProps & { rescue?: 
             <p className="mt-1 font-mono text-lg font-bold text-violet-200">{vectorText(lastMove)}</p>
           </div>
           <div className="rounded-lg border border-emerald-400/20 bg-slate-950/60 p-2">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">Error e</p>
-            <p className="mt-1 font-mono text-lg font-bold text-emerald-200">{vectorText(error)}</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">{rescue ? "Error e" : "Componentes"}</p>
+            <p className="mt-1 font-mono text-lg font-bold text-emerald-200">{rescue ? vectorText(error) : "x, y"}</p>
           </div>
         </div>
         <div className="mt-3 rounded-lg bg-slate-950/70 p-2 text-center font-mono text-xs text-slate-300 sm:text-sm">
