@@ -72,7 +72,7 @@ function RobotMission({ rescue = false, onComplete }: MissionProps & { rescue?: 
   const [lastMove, setLastMove] = useState<Position>([0, 0]);
   const [feedback, setFeedback] = useState(rescue
     ? "El error vectorial apunta desde tu posición hasta la meta. Los muros pueden impedir ir directo: usa el error como brújula, no como un camino obligatorio."
-    : "Un vector es una lista ordenada. p = [0, 0] tiene dos componentes: horizontal y vertical. Toca una flecha para sumar un desplazamiento Δp.");
+    : "El vector de posición p = [0, 0] tiene dos componentes: horizontal y vertical. Toca una flecha para sumar un desplazamiento Δp.");
   const complete = useMissionComplete(onComplete);
   const won = samePosition(position, target);
   const error = subtract(target, position);
