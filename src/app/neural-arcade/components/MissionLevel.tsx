@@ -23,6 +23,7 @@ import { ALL_LEVELS } from "../curriculum";
 import { useLocale } from "../i18n";
 import { playSound } from "../lib/sound";
 import { getLearningLadder, getLearningRung, type LearningRung } from "../learning-ladder";
+import { getLLMJourney, LLM_MESSAGE_FLOW, LLM_TRAINING_FLOW, type LLMJourney } from "../llm-journey";
 import type { MissionPlan, PipelineStep, SortItem } from "../mission-types";
 import { getPlainLanguageLayer, type PlainLanguageLayer } from "../plain-language";
 import { useArcade } from "../store";
@@ -59,6 +60,7 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
   const storedDone = progress[level.id]?.phasesDone ?? [];
   const rung = activePhase === "mastery" ? null : getLearningRung(level, activePhase);
   const plainLayer = rung ? getPlainLanguageLayer(plan, rung.phase) : null;
+  const llmJourney = getLLMJourney(level.id);
   // Preserve a partial mission's CTA after a refresh, while keeping a full
   // replay playable instead of letting completed levels jump to the recap.
   const phaseReady = readyPhase === activePhase || (!storedDone.includes("mastery") && storedDone.includes(activePhase));
@@ -121,6 +123,7 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
               spanish={spanish}
             />
 
+            {llmJourney && <LLMJourneyMap journey={llmJourney} color={level.color} spanish={spanish} />}
             {rung && plainLayer && <LearningLadder rung={rung} plainLayer={plainLayer} color={level.color} spanish={spanish} />}
 
             {activePhase === "theory" && (
@@ -149,6 +152,49 @@ export function MissionLevel({ level, plan }: { level: LevelMeta; plan: MissionP
           </section>
         )}
       </LevelShell>
+    </div>
+  );
+}
+
+function LLMJourneyMap({ journey, color, spanish }: { journey: LLMJourney; color: string; spanish: boolean }) {
+  return (
+    <aside className="mb-5 overflow-hidden rounded-2xl border border-violet-400/30 bg-violet-500/5" aria-labelledby="llm-journey-title">
+      <div className="border-b border-violet-400/20 bg-violet-950/30 px-4 py-3 sm:px-5">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-violet-300">{spanish ? "Mapa del LLM" : "LLM map"}</p>
+        <h2 id="llm-journey-title" className="mt-1 text-base font-extrabold text-violet-50 sm:text-lg">{journey.title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-violet-100/85">{journey.explanation}</p>
+      </div>
+      <div className="space-y-3 p-4 sm:p-5">
+        <JourneyRail label={spanish ? "Cuando responde" : "When it responds"} steps={LLM_MESSAGE_FLOW} activeStep={journey.messageStep} color={color} />
+        <JourneyRail label={spanish ? "Cuando aprende" : "When it learns"} steps={LLM_TRAINING_FLOW} activeStep={journey.trainingStep} color={color} />
+        <p className="text-xs leading-relaxed text-violet-100/75">{spanish ? "Este mapa no reemplaza las fórmulas: te dice dónde encaja la fórmula que vas a usar ahora." : "This map does not replace the formulas: it shows where the formula you use now fits."}</p>
+      </div>
+    </aside>
+  );
+}
+
+function JourneyRail({ label, steps, activeStep, color }: {
+  label: string;
+  steps: readonly { id: string; label: string; plain: string }[];
+  activeStep?: string;
+  color: string;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-violet-200">{label}</p>
+      <ol className="flex flex-wrap gap-1.5" aria-label={label}>
+        {steps.map((step, index) => {
+          const active = step.id === activeStep;
+          return (
+            <li key={step.id} className="flex items-center gap-1.5">
+              {index > 0 && <ArrowRight className="h-3 w-3 shrink-0 text-violet-300/60" aria-hidden />}
+              <span title={step.plain} className="rounded-full border px-2.5 py-1 text-[11px] font-bold leading-tight transition" style={active ? { borderColor: color, color, backgroundColor: `${color}16` } : undefined}>
+                {step.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
