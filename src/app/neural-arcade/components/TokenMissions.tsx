@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { CheckCircle2, RotateCcw, Scissors, Undo2 } from "lucide-react";
 import { playSound } from "../lib/sound";
+import { advanceTokenBuild, type TokenBuildTarget } from "../token-build";
 
 type MissionProps = { onComplete: (stars: number) => void };
 
@@ -134,29 +135,24 @@ function CutMessage({ onComplete }: MissionProps) {
 }
 
 function BuildWord({ onComplete }: MissionProps) {
-  const [round, setRound] = useState(0);
+  const [target, setTarget] = useState<TokenBuildTarget>("robot");
   const [pieces, setPieces] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   const { finished, finish, retry } = useMissionResult(onComplete);
-  const target = round === 0 ? "robot" : "robotito";
   const assembled = pieces.join("");
-  const roundFinished = assembled === target;
+  const wordNumber = target === "robot" ? 1 : 2;
 
   function add(piece: string) {
-    if (roundFinished || pieces.length >= 4) return;
-    const next = [...pieces, piece];
-    const word = next.join("");
-    setPieces(next);
+    if (finished || pieces.length >= 4) return;
+    const next = advanceTokenBuild({ pieces, target }, piece);
+    setPieces(next.pieces);
+    setTarget(next.target);
+    setNotice(next.notice);
     playSound("tick");
-    if (word === target) {
-      if (round === 1) finish();
-      else setNotice("¡Construiste «robot» con 2 tokens! Ahora usa las mismas piezas para una palabra más larga.");
-    } else setNotice(target.startsWith(word)
-      ? "La palabra empieza bien. Añade la siguiente pieza."
-      : "La palabra aún no coincide. Usa Deshacer y prueba otra pieza; no pierdes puntos.");
+    if (next.completed) finish();
   }
 
-  function reset() { setRound(0); setPieces([]); setNotice(""); retry(); }
+  function reset() { setTarget("robot"); setPieces([]); setNotice(""); retry(); }
 
   return (
     <Playground
@@ -167,16 +163,15 @@ function BuildWord({ onComplete }: MissionProps) {
       notice={notice}
     >
       <div className="rounded-xl bg-slate-950/70 p-4 text-center">
-        <p className="text-xs text-slate-400">Palabra {round + 1} de 2</p>
+        <p className="text-xs text-slate-400">Palabra {wordNumber} de 2</p>
         <p className="mt-2 text-2xl font-bold text-white">{target}</p>
         <p className="mt-3 min-h-8 break-all font-mono text-xl text-cyan-200" aria-label={`Tu palabra: ${assembled || "vacía"}`}>{assembled || "___"}</p>
         <p className="mt-1 text-xs text-slate-400">{pieces.length} {pieces.length === 1 ? "token" : "tokens"}</p>
       </div>
       <div className="flex flex-wrap justify-center gap-3" aria-label="Piezas disponibles">
-        {["ito", "rob", "ot"].map(piece => <button key={piece} type="button" className={chipClass} disabled={roundFinished || pieces.length >= 4} onClick={() => add(piece)}>{piece}</button>)}
+        {["ito", "rob", "ot"].map(piece => <button key={piece} type="button" className={chipClass} disabled={finished || pieces.length >= 4} onClick={() => add(piece)}>{piece}</button>)}
       </div>
-      {roundFinished && round === 0 && <button type="button" className={`${chipClass} w-full`} onClick={() => { setRound(1); setPieces([]); setNotice(""); }}>Ahora construye «robotito»</button>}
-      <EditControls canUndo={pieces.length > 0 && !finished && !roundFinished} undo={() => { setPieces(pieces.slice(0, -1)); setNotice(""); }} reset={reset} />
+      <EditControls canUndo={pieces.length > 0 && !finished} undo={() => { setPieces(pieces.slice(0, -1)); setNotice(""); }} reset={reset} />
     </Playground>
   );
 }
