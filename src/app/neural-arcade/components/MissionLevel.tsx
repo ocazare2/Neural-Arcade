@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { evaluateBuild } from "../build-decision";
 import { formatFormula } from "../formula-format";
 import { ALL_LEVELS } from "../curriculum";
 import { useLocale } from "../i18n";
@@ -443,26 +444,26 @@ function BuilderMission({ plan, color, onComplete }: { plan: MissionPlan; color:
 
   function testBuild() {
     if (done) return;
-    const missing = plan.build.modules.filter((module, index) => module.essential && !selected.has(index));
-    if (cost > plan.build.budget) {
+    const evaluation = evaluateBuild(plan.build, selected);
+    if (evaluation.status === "over-budget") {
       setMistakes((value) => value + 1);
-      setFeedback(spanish ? `La máquina consume ${cost}, pero solo tienes ${plan.build.budget}. Retira módulos que no ayudan al objetivo.` : `The machine uses ${cost}, but you only have ${plan.build.budget}. Remove modules that do not help the goal.`);
+      setFeedback(spanish ? `La máquina consume ${evaluation.cost}, pero solo tienes ${evaluation.budget}. Retira módulos que no ayudan al objetivo.` : `The machine uses ${evaluation.cost}, but you only have ${evaluation.budget}. Remove modules that do not help the goal.`);
       playSound("wrong");
       return;
     }
-    if (missing.length) {
+    if (evaluation.status === "missing-core") {
       setMistakes((value) => value + 1);
-      setFeedback(missing[0].why);
+      setFeedback(evaluation.missing[0].why);
       playSound("wrong");
       return;
     }
-    const upgrades = plan.build.modules.filter((module, index) => !module.essential && selected.has(index));
+    const { upgrades, spare } = evaluation;
     const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
     setDone(true);
     setFeedback(spanish
       ? upgrades.length
         ? `El núcleo cumple el objetivo y añadiste ${upgrades.map((module) => `«${module.label}»`).join(" y ")} sin superar el presupuesto.`
-        : `El núcleo cumple el objetivo. Dejaste ${plan.build.budget - cost} de margen: también es una decisión válida si no aporta una mejora necesaria.`
+        : `El núcleo cumple el objetivo. Dejaste ${spare} de margen: también es una decisión válida si no aporta una mejora necesaria.`
       : upgrades.length
         ? `The core meets the goal and you added ${upgrades.map((module) => `“${module.label}”`).join(" and ")} without exceeding the budget.`
         : `The core meets the goal. You kept ${plan.build.budget - cost} spare: that is valid when no extra upgrade is needed.`);

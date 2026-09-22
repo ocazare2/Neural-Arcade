@@ -20,11 +20,18 @@ export interface SortItem {
   why: string;
 }
 
-interface BuildModule {
+export interface BuildModule {
   label: string;
   cost: number;
   essential: boolean;
   why: string;
+}
+
+export interface BuildPlan {
+  title: string;
+  brief: string;
+  budget: number;
+  modules: readonly BuildModule[];
 }
 
 export interface MissionPlan {
@@ -44,10 +51,5 @@ export interface MissionPlan {
     lanes: readonly [SortLane, SortLane];
     items: readonly SortItem[];
   };
-  build: {
-    title: string;
-    brief: string;
-    budget: number;
-    modules: readonly BuildModule[];
-  };
+  build: BuildPlan;
 }
